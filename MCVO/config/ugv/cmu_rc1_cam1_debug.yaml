@@ -1,0 +1,171 @@
+%YAML:1.0
+
+#common parameters
+imu_topic: "/imu/data"
+image_topic: "/camera_1/image_raw"
+
+depth_topic: "/velodyne_points"
+laser_topic: "/velodyne_points"
+odom_topic: "/integrated_to_init"
+output_path: "/home/shiboz/visual_odometry/VINS-RGBD"
+
+
+#set parent frame in the config file
+# lio_world_frame: "sensor_init"
+# vins_world_frame: "vins_world"
+# camera_frame: "vins_camera"
+# lio_laser_frame: "sensor"
+# laser_frame: "sensor"
+# vins_imu_frame: "vins_imu"
+
+
+use_lidar_odom_meas: 1 # 1   means use lidar odometry constraints in vins system
+scale_lidar_absolute_factor: 3
+
+align_camera_lidar_estimation: 1 # align camera and lidar estimation for visualization
+
+# undistorted point cloud parameter
+odom_frame_id: "world" #平面点过滤的参数
+laser_frame_id: "lidar"
+undistorted_laser_topic: "/points_correct"
+voxelSize: 0.1
+blindFront: 0.1
+blindBack: -1.0
+blindLeft: 0.1
+blindRight: -0.1
+
+#pointcloud settings
+laser_type: 16
+pcl_dist: 10
+u_boundary: 10
+d_boundary: 10
+l_boundary: 40
+r_boundary: 40
+pcl_min_dist: 0.3
+pcl_max_dist: 6
+resolution: 0.02
+
+model_type: MEI
+camera_name: camera
+image_width: 640
+image_height: 480
+mirror_parameters:
+   xi: 1.5629934283981157
+distortion_parameters:
+   k1: -0.07083665039247518
+   k2:  0.3094574364801575
+   p1:  0.0004607746627279861
+   p2:  0.00015704097191542886
+projection_parameters:
+   gamma1: 761.6791126513665
+   gamma2: 678.7676595096547
+   u0: 317.73997456826834
+   v0: 233.50210820810244
+
+lidar_to_cam_tx: 0.0
+lidar_to_cam_ty: 0.0
+lidar_to_cam_tz: 0.0
+lidar_to_cam_rx: 0.0
+lidar_to_cam_ry: 0.0
+lidar_to_cam_rz: 0.0  
+# Extrinsic parameter between IMU and Camera.
+estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+  # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
+# 2  Don't know anything about extrinsic parameters. You don't need to give R,T. We will try to calibrate it. Do some rotation movement at beginning.
+#If you choose 0 or 1, you should write down the following matrix.
+#Rotation from camera frame to imu frame, imu^R_cam
+
+extrinsicRotation_imu_camera: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: d
+  data: [-0.01578308, -0.01124397,  0.99981222,
+         -0.99975463, -0.01536642, -0.01595499,
+         0.01554293, -0.99981871, -0.01099868]
+#Translation from camera frame to imu frame, imu^T_cam
+extrinsicTranslation_imu_camera: !!opencv-matrix
+  rows: 3
+  cols: 1
+  dt: d
+  data: [0.17313616,0.0476788,-0.01933398]
+
+
+#Rotation from laser frame to imu frame, imu^R_laser
+extrinsicRotation_imu_laser: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: d
+  data: [0.9999452, 0.0000000, 0.005,
+         0.0000000, 1.0000000, 0.0000000,
+         -0.005, 0.0000000, 0.9999452]
+#Translation from laser frame to imu frame, imu^T_laser
+extrinsicTranslation_imu_laser: !!opencv-matrix
+  rows: 3
+  cols: 1
+  dt: d
+  data: [0.0,0.0,0.0]
+
+#Rotation from laser frame to camera frame, camera^R_laser
+extrinsicRotation_camera_laser: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: d
+  data: [ -0.0158599,   -0.999755,   0.0154632, 
+          -0.00624426,  -0.0153664,    -0.99982,
+          0.999812,   -0.015955, -0.00599902 ]
+#Translation from laser frame to camera frame, camera^T_laser
+extrinsicTranslation_camera_laser: !!opencv-matrix
+  rows: 3
+  cols: 1
+  dt: d
+  data: [0.0507002,  -0.0166511,-0.172556]
+
+#feature traker paprameters
+max_cnt: 200          # max feature number in feature tracking
+min_dist: 20            # min distance between two features
+freq: 10                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+F_threshold: 1.0        # ransac threshold (pixel)
+show_track: 1           # publish tracking image as topic
+equalize: 1             # if image is too dark or light, trun on equalize to find enough features
+fisheye: 1             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+
+#optimization parameters
+max_solver_time: 0.04  # max solver itration time (ms), to guarantee real time
+max_num_iterations: 8   # max solver itrations, to guarantee real time
+keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
+
+#imu parameters       The more accurate parameters you provide, the better performance
+#for handheld, wheeld
+acc_n: 0.08          # accelerometer measurement noise standard deviation. #0.2
+gyr_n: 0.004         # gyroscope measurement noise standard deviation.     #0.05
+acc_w: 0.00004         # accelerometer bias random work noise standard deviation.  #0.02
+gyr_w: 2.0e-6       # gyroscope bias random work noise standard deviation.     #4.0e-5
+
+#for tracked applications
+#acc_n: 0.5          # accelerometer measurement noise standard deviation. #0.2
+#gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05
+#acc_w: 0.001         # accelerometer bias random work noise standard deviation.  #0.02
+#gyr_w: 2.0e-5       # gyroscope bias random work noise standard deviation.     #4.0e-5
+
+
+
+g_norm: 9.81007       # gravity magnitude
+
+#loop closure parameters
+loop_closure: 0                   # start loop closure
+fast_relocalization: 0             # useful in real-time and large project
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+pose_graph_save_path: "/home/shiboz/visual_odometry/VINS-RGBD" # save and load path
+
+#unsynchronization parameters
+estimate_td: 1                      # online estimate time offset between camera and imu
+td:  -0.00331374050629                           # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#rolling shutter parameters
+rolling_shutter: 0                      # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0.033               # unit: s. rolling shutter read out time per frame (from data sheet).
+
+#visualization parameters
+save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0
+visualize_imu_forward: 0        # output imu forward propogation to achieve low latency and high frequence results
+visualize_camera_size: 0.4      # size of camera marker in RVIZ

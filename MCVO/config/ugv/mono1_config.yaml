@@ -1,0 +1,16 @@
+model_type: MEI
+camera_name: camera
+image_width: 640
+image_height: 480
+mirror_parameters:
+  xi: 1.5629934283981157
+distortion_parameters:
+  k1: -0.07083665039247518
+  k2:  0.3094574364801575
+  p1:  0.0004607746627279861
+  p2:  0.00015704097191542886
+projection_parameters:
+  gamma1: 761.6791126513665
+  gamma2: 678.7676595096547
+  u0: 317.73997456826834
+  v0: 233.50210820810244

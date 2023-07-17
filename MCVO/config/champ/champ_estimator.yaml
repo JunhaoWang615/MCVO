@@ -1,0 +1,182 @@
+%YAML:1.0
+
+# enum camera_type
+# {
+#     MONOCULAR,
+#     STEREO,
+#     RGBD,
+#     THERMAL,
+#     LIDAR,
+#     UNKNOWN
+# };
+use_laser: 0
+imu_topic: "/champ_imu"
+depth_topic: "/velodyne_points"
+laser_topic: "/velodyne_points"
+odom_topic: "/integrated_to_init"
+output_path: "/home/shiboz/visual_odometry/VINS-RGBD"
+model_path: "/root/slam_project/src/tp_tio/tp_tio_plus/feature_tracker_tp_tio/scripts/trt_torchscript_module.trt"      
+# model_path: "/root/slam_project/src/tp_tio/tp_tio_plus/feature_tracker_tp_tio/scripts/traced.ts"      
+
+
+lio_world_frame: "sensor_init"
+vins_world_frame: "vins_world"
+camera_frame: "vins_camera"
+lio_laser_frame: "sensor"
+laser_frame: "sensor"
+vins_imu_frame: "vins_imu"
+
+use_lidar_odom_meas: 0 # 1   means use lidar odometry constraints in vins system
+scale_lidar_absolute_factor: 3
+
+align_camera_lidar_estimation: 0 # align camera and lidar estimation for visualization
+
+sensor_list: ['camera_0']
+
+camera_0:
+  sensor_type: 0
+  left_image_topic: "/champ_cam"
+  frame_id: "camera_0"
+  camera_config_file: "/home/yao/mulcamVO/src/MCVO/MCVO/config/champ/NVIDIA_ISAAC_cam.yaml"
+  extrinsicRotation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data: [1.0000000,  0.0000000,  0.0000000,
+          0.0000000,  1.0000000,  0.0000000,
+          0.0000000,  0.0000000, 1.0000000]
+  #Translation from camera frame to imu frame, imu^T_cam
+  extrinsicTranslation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [0.0,0.0,0.0]
+  #feature traker parameters
+  max_cnt: 200          # max feature number in feature tracking
+  min_dist: 20          # min distance between two features
+  freq: 10                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+  F_threshold: 1.0        # ransac threshold (pixel)
+  show_track: 1           # publish tracking image as topic
+  equalize: 0             # if image is too dark or light, trun on equalize to find enough features
+  fisheye: 0            # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/root/slam_project/src/vins-depth/config/msvio/fisheye_mask.jpg"
+  image_width: 2048
+  image_height: 1080
+  visualize: 1
+  Detector_type: 0
+  use_vpi: 0
+  mirror_parameters:
+    xi: 0
+  distortion_parameters:
+    k1: 0
+    k2: 0
+    p1: 0
+    p2: 0
+  projection_parameters:
+    fx: 2345.59765625
+    fy: 1695.136962890625
+    cx: 1024.0
+    cy: 540.0
+  # selector parameters (patch opt flow)
+  paramid_level: 2
+  max_iter: 5
+  flow_back_distance: 0.002
+  eigen_value_minimum: 1.0e-8
+  eigen_value_ratio: 10.0
+  feature_selector:
+    enable_active_feature_selection: 0
+    enable_two_stage_active_selection: 1
+    optical_flow_level: 2
+    max_eigen_threshold: 600
+    min_eigen_threshold: 1100
+    max_eigen_threshold2: 950
+    track_len_filter: 0
+    visualize: 0
+
+
+
+use_patchoptflow: 0     # 0:opencv tracking 1:patch optical flow 2:VPI tracking
+
+#thermal image contrast adjustment parameter
+mini_intensity: 21000.0  # the minimal value of current thermal image for JFR_Parkinglot dataset   #21000 for indoor air lab   #19000 for outdoor 
+scale_factor: 2500.0    # the scale factor for current thermal image for JFR_Parkinglot dataset      # 0.08 (4000) for indor air lab    # 0.12 for outdoor    
+clache_limit: 3.0       # the parmameter for image contrast "CLACHE"
+clache_window_size: 8    # the parameter for image contrast "CLACHE"
+
+# KLT tracking Parameter
+paramid_level: 2   #  the number of 16 bit parammid level
+max_iter: 5     # The maxium of iteration in KLT feature tracking
+flow_back_distance: 0.002 # The maxium distance threshold of flow back. if large than this, remove correspoinding features.
+eigen_value_minimum: 1.0e-8 # The Hessian matrix of current feauture should have a large eigen value; small than this value, we ignore.
+eigen_value_ratio: 10.0     # The eigen value lama1 and lama 2 should have similar magnitude
+
+#Parameter for thermal point
+border: 16    # border value for thermal point selection
+NMS_dist_thresh: 4 # NMS value for thermal point selection
+detection_thresh: 0.35 # detection threshold for thermal point on hawkins smoke deatset
+
+# Extrinsic parameter between IMU and Camera.
+estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+  # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
+# 2  Don't know anything about extrinsic parameters. You don't need to give R,T. We will try to calibrate it. Do some rotation movement at beginning.
+#If you choose 0 or 1, you should write down the following matrix.
+#Rotation from camera frame to imu frame, imu^R_cam
+
+#optimization parameters
+max_solver_time: 0.04  # max solver itration time (ms), to guarantee real time
+max_num_iterations: 8   # max solver itrations, to guarantee real time
+keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
+
+#imu parameters       The more accurate parameters you provide, the better performance
+#for handheld, wheeld
+acc_n: 0.2          # accelerometer measurement noise standard deviation. #0.2
+gyr_n: 0.05        # gyroscope measurement noise standard deviation.     #0.05
+acc_w: 0.02         # accelerometer bias random work noise standard deviation.  #0.02
+gyr_w: 4.0e-5      # gyroscope bias random work noise standard deviation.     #4.0e-5
+
+#for tracked applications
+#acc_n: 0.5          # accelerometer measurement noise standard deviation. #0.2
+#gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05
+#acc_w: 0.001         # accelerometer bias random work noise standard deviation.  #0.02
+#gyr_w: 2.0e-5       # gyroscope bias random work noise standard deviation.     #4.0e-5
+
+
+
+g_norm: 9.81007       # gravity magnitude
+
+#loop closure parameters
+loop_closure: 0                    # start loop closure
+fast_relocalization: 0             # useful in real-time and large project
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+pose_graph_save_path: "/home/shiboz/visual_odometry/VINS-RGBD" # save and load path
+
+#unsynchronization parameters
+estimate_td: 0                      # online estimate time offset between camera and imu
+td: 0                           # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#rolling shutter parameters
+rolling_shutter: 0                      # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0.033               # unit: s. rolling shutter read out time per frame (from data sheet).
+
+#visualization parameters
+save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0
+visualize_imu_forward: 0        # output imu forward propogation to achieve low latency and high frequence results
+visualize_camera_size: 0.4      # size of camera marker in RVIZ
+
+# Kd tree search parameter
+lidar_search_radius: 0.1
+
+# debug
+# whether to estimate scale when lidar provided
+estimate_scale: 1
+scale: 0.5
+depth_support_init: 0
+skip_default_init_method: 0
+
+# PnP simple init, depth information should be provided
+PnP_simple_init: 0
+
+
+#rolling shutter parameters
+rolling_shutter: 0                      # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0.033               # unit: s. rolling shutter read out time per frame (from data sheet).

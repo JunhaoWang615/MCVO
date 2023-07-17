@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "core": "cpp",
+        "*.evaluator": "cpp",
+        "*.traits": "cpp",
+        "bvh": "cpp",
+        "eulerangles": "cpp",
+        "fft": "cpp",
+        "specialfunctions": "cpp"
+    }
+}

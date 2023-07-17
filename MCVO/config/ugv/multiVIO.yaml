@@ -1,0 +1,134 @@
+%YAML:1.0
+
+# enum camera_type
+# {
+#     MONOCULAR,
+#     STEREO,
+#     RGBD,
+#     THERMAL,
+#     LIDAR,
+#     UNKNOWN
+# };
+imu_topic: "/imu/data"
+
+sensor_list: ['mono1','lidar1']
+
+mono1:
+  sensor_type: 0
+  left_image_topic: "/camera_1/image_raw"
+  frame_id: "mono1"
+  camera_config_file: "/home/yao/vins_depth_ws2/src/vins-depth/config/ugv/mono1_config.yaml"
+  extrinsicRotation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data: [-0.01578308, -0.01124397,  0.99981222,
+          -0.99975463, -0.01536642, -0.01595499,
+          0.01554293, -0.99981871, -0.01099868]
+  #Translation from camera frame to imu frame, imu^T_cam
+  extrinsicTranslation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [0.17313616,0.0476788,-0.01933398]
+  #feature traker paprameters
+  max_cnt: 200          # max feature number in feature tracking
+  min_dist: 20            # min distance between two features
+  freq: 10                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+  F_threshold: 1.0        # ransac threshold (pixel)
+  show_track: 1           # publish tracking image as topic
+  equalize: 1             # if image is too dark or light, trun on equalize to find enough features
+  fisheye: 1             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "xxx"
+
+
+####lidar config
+lidar1:
+  sensor_type: 5
+  laser_topic: "/velodyne_points"
+  depth_topic: "/velodyne_points"
+  lio_laser_frame: "sensor"
+  laser_frame: "sensor"
+  lio_world_frame: "sensor_init"
+  laser_frame_id: "lidar"
+  laser_type: 16
+  pcl_dist: 10
+  u_boundary: 10
+  d_boundary: 10
+  l_boundary: 40
+  r_boundary: 40
+  pcl_min_dist: 0.3
+  pcl_max_dist: 6
+  resolution: 0.02
+  undistorted_laser_topic: "/points_correct"
+  lidar_to_cam_tx: 0.0
+  lidar_to_cam_ty: 0.0
+  lidar_to_cam_tz: 0.0
+  lidar_to_cam_rx: 0.0
+  lidar_to_cam_ry: 0.0
+  lidar_to_cam_rz: 0.0  
+  #Rotation from laser frame to imu frame, imu^R_laser
+  extrinsicRotation_imu_laser: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data: [1, 0.0000000, 0.000,
+          0.0000000, 1.0000000, 0.0000000,
+          0, 0.0000000, 1]
+  #Translation from laser frame to imu frame, imu^T_laser
+  extrinsicTranslation_imu_laser: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [0.0,0.0,0.0]
+  lidar_search_radius: 0.1
+  mono1:
+    #Rotation from laser frame to camera frame, camera^R_laser
+    extrinsicRotation_camera_laser: !!opencv-matrix
+      rows: 3
+      cols: 3
+      dt: d
+      data: [ -0.02050035, -0.9995856,   0.0202078,
+              -0.00037277, -0.0202044,  -0.9997958,
+              0.99978978, -0.02050369,  0.00004158 ]
+    #Translation from laser frame to camera frame, camera^T_laser
+    extrinsicTranslation_camera_laser: !!opencv-matrix
+      rows: 3
+      cols: 1
+      dt: d
+      data: [0.05133537, -0.01882926,-0.17866769]
+
+
+g_norm: 9.81007       # gravity magnitude
+
+#loop closure parameters
+loop_closure: 0                    # start loop closure
+fast_relocalization: 0             # useful in real-time and large project
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+pose_graph_save_path: "/home/shiboz/visual_odometry/VINS-RGBD" # save and load path
+
+#unsynchronization parameters
+estimate_td: 1                      # online estimate time offset between camera and imu
+td:  -0.004834982760900171                           # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#rolling shutter parameters
+rolling_shutter: 0                      # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0.033               # unit: s. rolling shutter read out time per frame (from data sheet).
+
+#visualization parameters
+save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0
+visualize_imu_forward: 0        # output imu forward propogation to achieve low latency and high frequence results
+visualize_camera_size: 0.4      # size of camera marker in RVIZ
+
+# Kd tree search parameter
+lidar_search_radius: 0.1
+
+# debug
+# whether to estimate scale when lidar provided
+estimate_scale: 1
+scale: 0.5
+depth_support_init: 1
+skip_default_init_method: 1
+
+# PnP simple init, depth information should be provided
+PnP_simple_init: 0
