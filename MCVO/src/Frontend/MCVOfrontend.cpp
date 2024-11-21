@@ -15,7 +15,7 @@ std::mutex mtx_lidar;
 //     frontend->processImage(color_msg);
 // }
 
-MCVOfrontend::MCVOfrontend(string config_file)
+MCVOfrontend::MCVOfrontend(string config_file) 
 {
     this->config_file = config_file;
 } // function frontend end
@@ -42,7 +42,7 @@ sensor_msgs::PointCloud2 MCVOfrontend::publishCloud(ros::Publisher *thisPub, T t
         thisPub->publish(tempCloud);
     return tempCloud;
 }
-
+ 
 void MCVOfrontend::processImage(const sensor_msgs::ImageConstPtr &color_msg)
 {
     // step0: extract frame_id and find associate trackerData
@@ -607,7 +607,7 @@ void MCVOfrontend::addMonocular(cv::FileNode &fsSettings, ros::NodeHandle *priva
     {   
         LOG(INFO)<<"Use SuperPoint features";
         std::shared_ptr<SupFeatureTracker> tracker =
-            std::make_shared<SupFeatureTracker>(SupFeatureTracker());
+            std::make_shared<SupFeatureTracker>(SupFeatureTracker(row, col));
 
         tracker->cam = monocam;
         // register camera

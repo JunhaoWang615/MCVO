@@ -66,41 +66,6 @@ SuperGlueImpl::SuperGlueImpl(const SuperGlue::Param& param)
     m_module.to(m_device);
 
     
-//     torch::Dict<std::string, torch::Tensor> data;
-//     data.insert(
-//         "image0_shape",
-//         torch::from_blob(
-//             std::vector<float>{1, 1, static_cast<float>(1400), static_cast<float>(1400)}.data(),
-//             {4}, torch::kFloat)
-//             .clone());
-
-//     data.insert(
-//         "image1_shape",
-//         torch::from_blob(
-//             std::vector<float>{1, 1, static_cast<float>(1400), static_cast<float>(1400)}.data(),
-//             {4}, torch::kFloat)
-//             .clone());
-//     data.insert("match_threshold",
-//                 torch::from_blob(std::vector<float>{1}.data(), {1}, torch::kFloat).clone());
-//     int nums = 200;
-//     std::vector<torch::Tensor> e_keyPointsList = {torch::zeros({1, nums, 2}),
-//                                             torch::zeros({1, nums, 2})};
-//     std::vector<torch::Tensor> e_scoresList = {torch::zeros({1, nums}),
-//                                             torch::zeros({1, nums})};
-//     std::vector<torch::Tensor> e_descriptorsList = {torch::zeros({1, 256, nums}),
-//                                             torch::zeros({1, 256,  nums})};
-//     for (int i = 0; i < 2; ++i) {
-//     data.insert("keypoints" + std::to_string(i), std::move(e_keyPointsList[i]).to(m_device));
-//     data.insert("scores" + std::to_string(i), std::move(e_scoresList[i]).to(m_device));
-//     data.insert("descriptors" + std::to_string(i), std::move(e_descriptorsList[i]).to(m_device));
-// }
-
-
-//     std::vector<torch::jit::IValue> inputs;
-//     inputs.push_back(std::move(data));
-//     auto output =
-//         c10::impl::toTypedDict<std::string, torch::Tensor>(m_module.forward(inputs).toGenericDict());
-//     cudaDeviceSynchronize();
 }
 
 void SuperGlueImpl::match(cv::InputArray _queryDescriptors, const std::vector<cv::KeyPoint>& queryKeypoints,
@@ -108,7 +73,7 @@ void SuperGlueImpl::match(cv::InputArray _queryDescriptors, const std::vector<cv
                           const std::vector<cv::KeyPoint>& trainKeypoints, const cv::Size& trainSize,
                           CV_OUT std::vector<cv::DMatch>& matches) const
 {
-                LOG(INFO) << "99999999999999999999999999999999999999999START Matching";
+
     torch::Dict<std::string, torch::Tensor> data;
     data.insert(
         "image0_shape",
@@ -124,7 +89,7 @@ void SuperGlueImpl::match(cv::InputArray _queryDescriptors, const std::vector<cv
             .clone());
     data.insert("match_threshold",
                 torch::from_blob(std::vector<float>{m_param.matchThreshold}.data(), {1}, torch::kFloat).clone());
-            LOG(INFO) << "0000000000000000000000000000START Matching";
+
 
     int numQueryKeyPoints = queryKeypoints.size();
     int numTrainKeyPoints = trainKeypoints.size();
@@ -139,12 +104,12 @@ void SuperGlueImpl::match(cv::InputArray _queryDescriptors, const std::vector<cv
         descriptorsList[i] = descriptorsList[i].permute({0, 2, 1}).contiguous();
         data.insert("descriptors" + std::to_string(i), std::move(descriptorsList[i]).to(m_device));
     }
-            LOG(INFO) << "111111111111111111111111111START Matching";
+
     std::vector<torch::Tensor> keyPointsList = {torch::zeros({1, numQueryKeyPoints, 2}),
                                                 torch::zeros({1, numTrainKeyPoints, 2})};
     std::vector<torch::Tensor> scoresList = {torch::zeros({1, numQueryKeyPoints}),
                                              torch::zeros({1, numTrainKeyPoints})};
-            LOG(INFO) << "333333333333333333333333333START Matching";
+
     for (int i = 0; i < numQueryKeyPoints; ++i) {
         keyPointsList[0][0][i][0] = queryKeypoints[i].pt.y;
         keyPointsList[0][0][i][1] = queryKeypoints[i].pt.x;

@@ -142,14 +142,3 @@ private:
 
     vector<int> feature_num;
 };
-
-// Eigen::Matrix3d hatmat(const Eigen::Vector3d &v);
-// {
-//     Eigen::Matrix3d Omega;
-//     Omega << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
-//     return Omega;
-// }
-
-// Eigen::Vector3d SO3Log(Eigen::Matrix3d Rot);
-
-// Eigen::Matrix3d SO3Exp(Eigen::Vector3d rot);

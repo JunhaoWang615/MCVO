@@ -41,17 +41,29 @@ void MCVOEstimator::setParameter()
     tic = (Vector3d *)malloc(sizeof(Vector3d) * NUM_OF_CAM);
     ric = (Matrix3d *)malloc(sizeof(Matrix3d) * NUM_OF_CAM);
     para_Ex_Pose = (double **)malloc(sizeof(double *) * NUM_OF_CAM);
+    para_Ex_Pose_cp = (double **)malloc(sizeof(double *) * NUM_OF_CAM);
+    para_cam_Pose = (double ***)malloc(sizeof(double **) * NUM_OF_CAM);
     for (int i = 0; i < NUM_OF_CAM; i++)
     {
         tic[i] = TIC[i];
         ric[i] = RIC[i];
         para_Ex_Pose[i] = (double *)malloc(sizeof(double) * SIZE_POSE);
+        para_Ex_Pose_cp[i] = (double *)malloc(sizeof(double) * SIZE_POSE);
+        para_cam_Pose[i] = (double **)malloc(sizeof(double *) * WINDOW_SIZE);
+        for (int c = 0; c <= WINDOW_SIZE; c++)
+        {
+            para_cam_Pose[i][c] = (double *)malloc(sizeof(double) * SIZE_POSE);
+        }
     }
+
+
     f_manager.setRic(ric);
     ProjectionFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
+    ProjectionMCFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
     ProjectionTdFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
     td = TD;
 }
+
 
 void MCVOEstimator::clearState()
 {
@@ -179,6 +191,7 @@ void MCVOEstimator::processIMU(double dt, const Vector3d &linear_acceleration, c
 // featureID-> [<camID, xyz, uv, velocity, depth>]
 void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &input)
 {
+
 #if SHOW_LOG_DEBUG
     ROS_DEBUG("new image coming ------------------------------------------");
 #endif
@@ -196,6 +209,7 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
         marginalization_flag = MarginalizationFlag::MARGIN_OLD;
     else
         marginalization_flag = MarginalizationFlag::MARGIN_SECOND_NEW;
+
 // std::string marg = (marginalization_flag == MarginalizationFlag::MARGIN_OLD ? "reject" : "accept");
 #if SHOW_LOG_DEBUG
     printf("----\n File: \"%s\" \n line: %d \n function <%s>\n Content: Marginalization %s \n=====", __FILE__, __LINE__, __func__, (marginalization_flag == MarginalizationFlag::MARGIN_OLD ? "reject" : "accept"));
@@ -204,24 +218,11 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
 #endif
     Headers[frame_count].stamp = ros::Time().fromSec(input.sync_timestamp);
 
-    //    {
-    //
-    //        int count = 0;
-    //        std::string output;
-    //        for (const auto tid : Headers) {
-    //            output += std::to_string(count) + " ->" + std::to_string(tid.stamp.toSec()) + "\n";
-    //            count++;
-    //        }
-    //
-    //        LOG(INFO) << "Original WINDOW Frame: \n" << output;
-    //    }
-    // step 创建新的一帧数据
     ImageFrame imageframe(input);
     imageframe.pre_integration = tmp_pre_integration;
     localWindowFrames.insert(make_pair(input.sync_timestamp, imageframe));
     tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
-    // check header stamp
 #if SHOW_LOG_DEBUG
     int header_count = 0;
     for (auto i : localWindowFrames)
@@ -242,12 +243,13 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
                 bool result = false;
                 if (ESTIMATE_EXTRINSIC != 2 && (input.sync_timestamp - initial_timestamp) > 0.1)
                 {
+
                     for (int c = 0; c < NUM_OF_CAM; c++)
                     {
                         cam_state[c] = true;
                     }
                     f_manager.setCamState(cam_state);
-// result = initialStructure();
+
 
 #if 0
                     result = initialMultiStructure2();
@@ -256,24 +258,26 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
 #endif
                     initial_timestamp = input.sync_timestamp;
                 }
+
                 // if init sfm success
                 if (result)
                 {
                     solver_flag = SolverFlag::NON_LINEAR;
-                    // LOG(INFO) << "solveOdometry";
+                    
                     solveOdometry();
-                    // LOG(INFO) << "Slide window";
+                    
+  
                     slideWindow();
-                    // LOG(INFO) << "Remove failure";
+
                     f_manager.removeFailures();
-                    // LOG(INFO) << "Initialization finish!";
+
                     last_R = Rs[WINDOW_SIZE];
                     last_P = Ps[WINDOW_SIZE];
                     last_R0 = Rs[0];
                     last_P0 = Ps[0];
                 }
                 else
-                {
+                {         
                     for (int c = 0; c < NUM_OF_CAM; c++)
                     {
                         cam_state[c] = true;
@@ -284,18 +288,16 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
             }
             else
                 frame_count++;
+            
         }
 #if 0
         else
         {
-            // Lidar depth support + PnP init
             f_manager.initFramePoseByPnP(frame_count, Ps, Rs, tic, ric);
-            // f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
             if (frame_count > -1)
             {
                 f_manager.triangulateWithDepth(Ps, tic, ric);
                 f_manager.triangulate(Ps, tic, ric);
-                // LOG(INFO) << "triangulation finish";
             }
             if (frame_count == WINDOW_SIZE)
             {
@@ -303,8 +305,6 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
                 int i = 0;
                 for (frame_it = localWindowFrames.begin(); frame_it != localWindowFrames.end(); frame_it++)
                 {
-                    // frame_it->second.R = Rs[i];
-                    // frame_it->second.T = Ps[i];
                     frame_it->second.Twi = Transformd(Rs[i], Ps[i]);
                     i++;
                 }
@@ -313,8 +313,7 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
                 {
                     pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
                 }
-                // optimization();
-                // updateLatestStates();
+
                 solveOdometry();
                 solver_flag = SolverFlag::NON_LINEAR;
                 slideWindow();
@@ -336,52 +335,7 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
     else
     {
         solveOdometry();
-        // LOG(ERROR) << "solver costs: " << t_solve.toc() << "ms";
-        //my work wang
-        // est_num++;
-        // if(est_num >= 30)
-        // {
-        //             cout << "21121212121221221111111111111111" << est_num <<endl;
-        // TicToc t_solve;
-        // int l;
-        // Matrix3d relative_R[NUM_OF_CAM];
-        // Vector3d relative_T[NUM_OF_CAM];
-        // vector<bool> state;
-        // VectorXd x;
-        // bool result_m;
-        // bool result = false;
-        // // for (int i = 0; i <= NUM_OF_CAM; i++)
-        // // {
-        // //     state.push_back(true);
-        // // }
-        // result_m = mulcam_relativePose(relative_R, relative_T, l, state);
-        // if(result_m)
-        //     result = MultiCameraAlignment(localWindowFrames, l, x, state);
-        // if(result)
-        // {   
-        // int base_cam = 0;
-        // for (int c = 0; c < NUM_OF_CAM; c++)
-        // {
-        //     if (!state[c])
-        //         continue;
-        //     else
-        //     {
-        //         base_cam = c;
-        //         break;
-        //     }
-        // }
-        // for (int i = 0; i <= WINDOW_SIZE; i++)
-        // {
-        // Ps[i] = Ps[i]*x(base_cam);
-        // Vs[i] = Vs[i]*x(base_cam);
-        // Bas[i] = Bas[i]*x(base_cam);
-        // Bgs[i] = Bgs[i]*x(base_cam);
-        // }
-        // }
-        // est_num = 0;
-        //
-        // tic[i] = tic[i]*x(base_cam);
-        //}
+
         if (failureDetection())
         {
             LOG(ERROR) << "failure detection!";
@@ -400,8 +354,6 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
         TicToc t_margin;
         slideWindow();
         f_manager.removeFailures();
-        //        LOG(INFO) << "marginalization costs: " << t_margin.toc() << "ms";
-        // prepare output of VINS
         key_poses.clear();
         for (int i = 0; i <= WINDOW_SIZE; i++)
             key_poses.push_back(Ps[i]);
@@ -412,7 +364,6 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
         last_P0 = Ps[0];
     }
 
-    // henryzh47: update VIO initial stat
     if (init_delay_frame_countdown-- >= 0)
     {
         ROS_WARN("VIO initialization buffer frames");
@@ -423,7 +374,7 @@ void MCVOEstimator::processImageAndLidar(const SyncCameraProcessingResults &inpu
     }
 
     recomputeFrameId();
-} // function processImageAndLidar
+} 
 
 void MCVOEstimator::recomputeFrameId()
 {
@@ -444,12 +395,13 @@ void MCVOEstimator::recomputeFrameId()
 
         localwindow_id++;
     }
-    // LOG(INFO) << "WINDOW Frame: \n" << output;
 
-} // recomputeFrameId
+} 
 
 bool MCVOEstimator::initialMultiStructure()
 {
+    TicToc tmp_t;
+
     LOG(INFO) << "Initial structure for multiple cameras";
     Eigen::aligned_vector<Eigen::aligned_vector<Quaterniond>> Q;
     Eigen::aligned_vector<Eigen::aligned_vector<Vector3d>> T;
@@ -472,8 +424,8 @@ bool MCVOEstimator::initialMultiStructure()
         for (auto &landmark : f_manager.KeyPointLandmarks[c])
         {
             SFMFeature tmp_feature;
-            tmp_feature.state = false;                   // 表示没有深度
-            tmp_feature.id = landmark.second.feature_id; // landmark的id号
+            tmp_feature.state = false;                   
+            tmp_feature.id = landmark.second.feature_id; 
 
             for (const auto &obser_per_frame : landmark.second.obs)
             {
@@ -516,32 +468,26 @@ bool MCVOEstimator::initialMultiStructure()
             }
         }
     }
-    // LOG(INFO)<<"NUM OF CAM"<<NUM_OF_CAM;
     for (int c = 0; c < NUM_OF_CAM; c++)
     {
         if (!state[c])
             continue;
-        // solve pnp for all frame
         Eigen::aligned_map<double, ImageFrame>::iterator frame_it;
         Eigen::aligned_map<int, Vector3d>::iterator it;
 
-        // acceleration ratio
+
         double last_v, current_v, last_a, current_a;
         last_v = current_v = current_a = last_a = 0;
         double last_stamp;
         frame_it = localWindowFrames.begin();
         for (int i = 0; frame_it != localWindowFrames.end(); frame_it++)
         {
-            // provide initial guess
             cv::Mat r, rvec, t, D, tmp_r;
 
             if ((frame_it->first) == Headers[i].stamp.toSec())
             {
                 frame_it->second.is_key_frame = true;
-                // First store camera pose, later trasform back to body pose
-                // frame_it->second.Twi[c] = Transformd(Q[c][i].toRotationMatrix() * RIC[c].transpose(), T[c][i]);
 
-                // nan, inf check
                 Eigen::Matrix3d cam_rot = Q[c][i].toRotationMatrix();
                 for (int idx = 0; idx < 9; idx++)
                 {
@@ -622,11 +568,9 @@ bool MCVOEstimator::initialMultiStructure()
             LOG(INFO) << fixed << "current t: " << frame_it->first;
             LOG(INFO) << fixed << "Headers[" << i << "]: " << Headers[i].stamp.toSec();
             LOG(INFO) << frame_it->first - Headers[i].stamp.toSec();
-            // Q和T是图像帧的位姿，而不是求解PNP时所用的坐标系变换矩阵
-            // initial guess
+
             Matrix3d R_inital = (Q[c][i].inverse()).toRotationMatrix();
             Vector3d P_inital = -R_inital * T[c][i];
-            // LOG(INFO)<<i<<"th pose:"<<std::endl<<R_inital<<std::endl<<P_inital<<std::endl<<"------------------";
             cv::eigen2cv(R_inital, tmp_r);
             cv::Rodrigues(tmp_r, rvec);
             cv::eigen2cv(P_inital, t);
@@ -634,7 +578,6 @@ bool MCVOEstimator::initialMultiStructure()
             frame_it->second.is_key_frame = false;
             vector<cv::Point3f> pts_3_vector;
             vector<cv::Point2f> pts_2_vector;
-            // points: map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>
             for (auto &id_pts : frame_it->second.points[c])
             {
                 int feature_id = id_pts.first;
@@ -646,7 +589,6 @@ bool MCVOEstimator::initialMultiStructure()
                         Vector3d world_pts = it->second;
                         cv::Point3f pts_3(world_pts(0), world_pts(1), world_pts(2));
                         pts_3_vector.push_back(pts_3);
-                        // Vector2d img_pts = i_p.second.head<2>();
                         Vector2d img_pts = i_p.head<2>();
                         cv::Point2f pts_2(img_pts(0), img_pts(1));
                         pts_2_vector.push_back(pts_2);
@@ -655,7 +597,6 @@ bool MCVOEstimator::initialMultiStructure()
             }
             LOG(INFO) << "pts_3_vector size : " << pts_3_vector.size();
             cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-            // cv::Mat K = (cv::Mat_<double>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
             if (pts_3_vector.size() < 6)
             {
                 cout << "pts_3_vector size " << pts_3_vector.size() << endl;
@@ -680,7 +621,6 @@ bool MCVOEstimator::initialMultiStructure()
                 LOG(INFO) << i << " th frame (non kf):\n"
                           << tmp_R_pnp << '\n'
                           << T_pnp << "-------------";
-                // frame_it->second.Twi[c] = Transformd(R_pnp * RIC[c].transpose(), T_pnp);
                 frame_it->second.Twi[c] = Transformd(R_pnp, T_pnp);
             }
         }
@@ -709,22 +649,17 @@ bool MCVOEstimator::initialMultiStructure2()
     {
         Q[c].resize(frame_count + 1);
         T[c].resize(frame_count + 1);
-        // TODO: 使用 unordered_map 代替　list
-        // TODO: 需要修改的地方
+
 #if SINGLE_CAM_DEBUG
         if (c > 0)
             continue;
 #endif
-        //   LOG(INFO) << "COME HERE!";
-        // LOG(INFO)<<"f_manager.KeyPointLandmarks: "<<f_manager.KeyPointLandmarks.size();
         for (auto &landmark : f_manager.KeyPointLandmarks[c])
         {
             SFMFeature tmp_feature;
-            tmp_feature.state = false;                   // 表示没有深度
-            tmp_feature.id = landmark.second.feature_id; // landmark的id号
+            tmp_feature.state = false;              
+            tmp_feature.id = landmark.second.feature_id; 
 
-            // auto observation = landmark.second.obs; unused declaration
-            //       LOG(INFO)<<" landmark.second.obs.size(): "<< landmark.second.obs.size();
             for (const auto &obser_per_frame : landmark.second.obs)
             {
 
@@ -739,13 +674,7 @@ bool MCVOEstimator::initialMultiStructure2()
             sfm_f[c].push_back(tmp_feature);
         }
     }
-    // for (int c = 0; c < NUM_OF_CAM; c++)
-    //     for (int f = 0; f < frame_count + 1; f++)
-    //     {
-    //         LOG(INFO) << f << " th kf:\n"
-    //                   << Q[c][f].toRotationMatrix() << '\n'
-    //                   << T[c][f];
-    //     }
+
     int l;
     Matrix3d relative_R[NUM_OF_CAM];
     Vector3d relative_T[NUM_OF_CAM];
@@ -770,30 +699,23 @@ bool MCVOEstimator::initialMultiStructure2()
         }
     }
 
-    // LOG(INFO)<<"NUM OF CAM"<<NUM_OF_CAM;
     for (int c = 0; c < NUM_OF_CAM; c++)
     {
-        // solve pnp for all frame
         Eigen::aligned_map<double, ImageFrame>::iterator frame_it;
         Eigen::aligned_map<int, Vector3d>::iterator it;
 
-        // acceleration ratio
         double last_v, current_v, last_a, current_a;
         last_v = current_v = current_a = last_a = 0;
         double last_stamp;
         frame_it = localWindowFrames.begin();
         for (int i = 0; frame_it != localWindowFrames.end(); frame_it++)
         {
-            // provide initial guess
             cv::Mat r, rvec, t, D, tmp_r;
 
             if ((frame_it->first) == Headers[i].stamp.toSec())
             {
                 frame_it->second.is_key_frame = true;
-                // First store camera pose, later trasform back to body pose
-                // frame_it->second.Twi[c] = Transformd(Q[c][i].toRotationMatrix() * RIC[c].transpose(), T[c][i]);
 
-                // nan, inf check
                 Eigen::Matrix3d cam_rot = Q[c][i].toRotationMatrix();
                 for (int idx = 0; idx < 9; idx++)
                 {
@@ -874,11 +796,9 @@ bool MCVOEstimator::initialMultiStructure2()
             LOG(INFO) << fixed << "current t: " << frame_it->first;
             LOG(INFO) << fixed << "Headers[" << i << "]: " << Headers[i].stamp.toSec();
             LOG(INFO) << frame_it->first - Headers[i].stamp.toSec();
-            // Q和T是图像帧的位姿，而不是求解PNP时所用的坐标系变换矩阵
             // initial guess
             Matrix3d R_inital = (Q[c][i].inverse()).toRotationMatrix();
             Vector3d P_inital = -R_inital * T[c][i];
-            // LOG(INFO)<<i<<"th pose:"<<std::endl<<R_inital<<std::endl<<P_inital<<std::endl<<"------------------";
             cv::eigen2cv(R_inital, tmp_r);
             cv::Rodrigues(tmp_r, rvec);
             cv::eigen2cv(P_inital, t);
@@ -886,7 +806,6 @@ bool MCVOEstimator::initialMultiStructure2()
             frame_it->second.is_key_frame = false;
             vector<cv::Point3f> pts_3_vector;
             vector<cv::Point2f> pts_2_vector;
-            // points: map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>
             for (auto &id_pts : frame_it->second.points[c])
             {
                 int feature_id = id_pts.first;
@@ -898,7 +817,6 @@ bool MCVOEstimator::initialMultiStructure2()
                         Vector3d world_pts = it->second;
                         cv::Point3f pts_3(world_pts(0), world_pts(1), world_pts(2));
                         pts_3_vector.push_back(pts_3);
-                        // Vector2d img_pts = i_p.second.head<2>();
                         Vector2d img_pts = i_p.head<2>();
                         cv::Point2f pts_2(img_pts(0), img_pts(1));
                         pts_2_vector.push_back(pts_2);
@@ -907,7 +825,6 @@ bool MCVOEstimator::initialMultiStructure2()
             }
             LOG(INFO) << "pts_3_vector size : " << pts_3_vector.size();
             cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-            // cv::Mat K = (cv::Mat_<double>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
             if (pts_3_vector.size() < 6)
             {
                 cout << "pts_3_vector size " << pts_3_vector.size() << endl;
@@ -932,7 +849,6 @@ bool MCVOEstimator::initialMultiStructure2()
                 LOG(INFO) << i << " th frame (non kf):\n"
                           << tmp_R_pnp << '\n'
                           << T_pnp << "-------------";
-                // frame_it->second.Twi[c] = Transformd(R_pnp * RIC[c].transpose(), T_pnp);
                 frame_it->second.Twi[c] = Transformd(R_pnp, T_pnp);
             }
         }
@@ -1032,12 +948,13 @@ bool MCVOEstimator::multiVisualInitialAlign(int l, vector<bool> &state)
     // solve scale
 
     result = MultiCameraAlignment(localWindowFrames, l, x, state);
+
     if (!result)
     {
         ROS_ERROR("Multi-camera alignment fails!");
         return false;
     }
-        std::cout << "11111111111111111111111111111" << std::endl;
+
 
     // change state
     LOG(INFO) << "After alignment:";
@@ -1376,11 +1293,7 @@ bool MCVOEstimator::initialStructure()
         }
     }
 #endif
-    // without scale recovery
-    // 保证具有足够的视差,由F矩阵恢复Rt
-    // 第l帧是从第一帧开始到滑动窗口中第一个满足与当前帧的平均视差足够大的帧，会作为参考帧到下面的全局sfm使用
-    // 此处的relative_R，relative_T为当前帧到参考帧（第l帧）的坐标系变换Rt
-    // relative_T has no scale
+
     if (init_without_depth && !skip_default_init_method)
     {
         LOG(INFO) << "Use lidar depth initialization fails. Try to use default method >>>>>>>>>";
@@ -1394,8 +1307,6 @@ bool MCVOEstimator::initialStructure()
         LOG(INFO) << "Camera T \n"
                   << relative_T;
 
-        // 对窗口中每个图像帧求解sfm问题
-        // 得到所有图像帧相对于参考帧的姿态四元数Q、平移向量T和特征点坐标sfm_tracked_points。
         GlobalSFM sfm;
         if (!sfm.construct(frame_count + 1, Q, T, l, base_cam,
                            relative_R, relative_T,
@@ -1406,9 +1317,6 @@ bool MCVOEstimator::initialStructure()
             return false;
         }
 
-        // solve pnp for all frame
-        // TODO: 为啥又要PNP一次？
-        // 对于所有的图像帧，包括不在滑动窗口中的，提供初始的RT估计，然后solvePnP进行优化,得到每一帧的姿态
         Eigen::aligned_map<double, ImageFrame>::iterator frame_it;
         Eigen::aligned_map<int, Vector3d>::iterator it;
         frame_it = localWindowFrames.begin();
@@ -1449,7 +1357,6 @@ bool MCVOEstimator::initialStructure()
                 if (c > 0)
                     continue;
 #endif
-                // Q和T是图像帧的位姿，而不是求解PNP时所用的坐标系变换矩阵
                 Matrix3d R_inital = (Q[c][i].inverse()).toRotationMatrix();
                 Vector3d P_inital = -R_inital * T[c][i];
                 cv::eigen2cv(R_inital, tmp_r);
@@ -1459,7 +1366,6 @@ bool MCVOEstimator::initialStructure()
                 frame_it->second.is_key_frame = false;
                 vector<cv::Point3f> pts_3_vector;
                 vector<cv::Point2f> pts_2_vector;
-                // points: map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>
                 for (auto &id_pts : frame_it->second.points[c])
                 {
                     int feature_id = id_pts.first;
@@ -1484,18 +1390,6 @@ bool MCVOEstimator::initialStructure()
                     LOG(INFO) << "Not enough points for solve pnp !";
                     return false;
                 }
-                /**
-                 *bool cv::solvePnP(    求解pnp问题
-                 *   InputArray  objectPoints,   特征点的3D坐标数组
-                 *   InputArray  imagePoints,    特征点对应的图像坐标
-                 *   InputArray  cameraMatrix,   相机内参矩阵
-                 *   InputArray  distCoeffs,     失真系数的输入向量
-                 *   OutputArray     rvec,       旋转向量
-                 *   OutputArray     tvec,       平移向量
-                 *   bool    useExtrinsicGuess = false, 为真则使用提供的初始估计值
-                 *   int     flags = SOLVEPNP_ITERATIVE 采用LM优化
-                 *)
-                 */
 
                 if (!cv::solvePnP(pts_3_vector, pts_2_vector, K, D, rvec, t, true))
                 {
@@ -1505,7 +1399,6 @@ bool MCVOEstimator::initialStructure()
                 cv::Rodrigues(rvec, r);
                 MatrixXd R_pnp, tmp_R_pnp;
                 cv::cv2eigen(r, tmp_R_pnp);
-                // 这里也同样需要将坐标变换矩阵转变成图像帧位姿，并转换为IMU坐标系的位姿
                 R_pnp = tmp_R_pnp.transpose();
                 MatrixXd T_pnp;
                 cv::cv2eigen(t, T_pnp);
@@ -1516,8 +1409,7 @@ bool MCVOEstimator::initialStructure()
                 frame_it->second.Twi[c] = Transformd(R_pnp * RIC[c].transpose(), T_pnp);
             }
         }
-        // Rs Ps ric init
-        // 进行视觉惯性联合初始化
+
 #if 1
         if (visualInitialAlign(base_cam))
 #else
@@ -1531,14 +1423,11 @@ bool MCVOEstimator::initialStructure()
         }
     }
     return false;
-} // function initialStructure
-
-// TODO: add init for other cams
+} 
 bool MCVOEstimator::visualInitialAlign(int base_cam)
 {
     TicToc t_g;
     VectorXd x;
-    // solve scale
     bool result = VisualIMUAlignment(localWindowFrames, Bgs, g, x, base_cam);
     if (!result)
     {
@@ -1546,7 +1435,6 @@ bool MCVOEstimator::visualInitialAlign(int base_cam)
         return false;
     }
 
-    // change state
     LOG(INFO) << "After alignment:";
     for (int i = 0; i <= frame_count; i++)
     {
@@ -1569,17 +1457,10 @@ bool MCVOEstimator::visualInitialAlign(int base_cam)
         ric[i] = RIC[i];
     }
     f_manager.setRic(ric);
-    // Ps up-to-scale, no tic as approximation
-    // triangulated depth up-to-scale for all kpts
     f_manager.triangulate(Ps, &(TIC_TMP[0]), &(RIC[0]), base_cam);
-    // f_manager.triangulateWithDepth(Ps, &(TIC_TMP[0]), &(RIC[0]));
 
     double s = (x.tail<1>())(0);
     LOG(INFO) << "Scale:" << s;
-    // s = scale;
-    // LOG(INFO)<<"Reset scale to "<<s;
-    // ROS_DEBUG("the scale is %f\n", s);
-    //  do repropagate here
     for (int i = 0; i <= WINDOW_SIZE; i++)
     {
         pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
@@ -1609,7 +1490,6 @@ bool MCVOEstimator::visualInitialAlign(int base_cam)
             Vs[kv] = frame_i->second.Twi[base_cam].rot * x.segment<3>(kv * 3);
         }
     }
-    // all kpts depth go to true scale
     for (int c = 0; c < NUM_OF_CAM; c++)
     {
         for (auto &landmark : f_manager.KeyPointLandmarks[c])
@@ -1620,14 +1500,11 @@ bool MCVOEstimator::visualInitialAlign(int base_cam)
             landmark.second.estimated_depth *= s;
         }
     }
-    // ! Modified algorithm
     f_manager.triangulate(Ps, &(tic[0]), &(ric[0]), base_cam);
-    // Retriangulate to get true depth
     Matrix3d R0 = Utility::g2R(g);
     double yaw = Utility::R2ypr(R0 * Rs[0]).x();
     R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
     g = R0 * g;
-    // Matrix3d rot_diff = R0 * Rs[0].transpose();
     Matrix3d rot_diff = R0;
     for (int i = 0; i <= frame_count; i++)
     {
@@ -1889,11 +1766,10 @@ bool MCVOEstimator::mulcam_relativePose(Matrix3d *relative_R, Vector3d *relative
                     valid_count[i].second[c] = true;
                     
                 }
-            }
+            } 
         }
 
         LOG(INFO) << "Valid count: " << valid_count[i].first;
-        //得到所有摄像头效果都很好的帧作为参考帧（下方代码
         if (valid_count[i].first == NUM_OF_CAM)
         {
             LOG(INFO) << "All cameras have good visual infomation at " << l << "Frame";
@@ -1907,7 +1783,6 @@ bool MCVOEstimator::mulcam_relativePose(Matrix3d *relative_R, Vector3d *relative
             return true;
         }
     }
-    //选择尽可能多的效果好的摄像头的帧作为参考帧（下方代码
     int max_count = 0;
     int max_idx = 0;
     for (int i = 0; i < WINDOW_SIZE; i++)
@@ -2216,12 +2091,10 @@ bool MCVOEstimator::relativePosePnP(Matrix3d &relative_R, Vector3d &relative_T, 
         {
             // ROS_INFO_STREAM("corres size: " << corres.size());
             LOG(INFO) << "corres[" << max_idx << "] size:" << corres[max_idx].size();
-            // 计算平均视差
             double sum_parallax = 0;
             double average_parallax;
             for (size_t j = 0; j < corres[max_idx].size(); j++)
             {
-                // 第j个对应点在第i帧和最后一帧的(x,y)
                 Vector2d pts_0(corres[max_idx][j].first(0) / corres[max_idx][j].first(2), corres[max_idx][j].first(1) / corres[max_idx][j].first(2));
                 Vector2d pts_1(corres[max_idx][j].second(0) / corres[max_idx][j].second(2), corres[max_idx][j].second(1) / corres[max_idx][j].second(2));
                 double parallax = (pts_0 - pts_1).norm();
@@ -2236,8 +2109,6 @@ bool MCVOEstimator::relativePosePnP(Matrix3d &relative_R, Vector3d &relative_T, 
             // 同时返回窗口最后一帧（当前帧）到第l帧（参考帧）的Rt
             if (average_parallax * 460 > 20 && m_estimator.solveRelativeRT_PNP2(corres[max_idx], relative_R, relative_T))
             {
-                //                Matrix3d relative_R2; Vector3d relative_T2;
-                //                m_estimator.solveRelativeRT(corres, relative_R2, relative_T2);
                 l = i;
                 base_cam = max_idx;
                 ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure",
@@ -2303,10 +2174,8 @@ void MCVOEstimator::solveOdometry()
         TicToc t_tri;
         f_manager.triangulateWithDepth(Ps, tic, ric, base_camera);
         f_manager.triangulate(Ps, tic, ric, base_camera);
-        //        LOG(INFO) << "triangulation costs: " << t_tri.toc();
-        // LOG(INFO) << "optimization";
+        LOG(INFO) << "optimization";
         optimization();
-        // LOG(INFO) << "Update frame pose";
         updateFramePose();
     }
 }
@@ -2390,9 +2259,9 @@ void MCVOEstimator::double2vector()
 
         Rs[i] = rot_diff * Quaterniond(para_Pose[i][6], para_Pose[i][3], para_Pose[i][4], para_Pose[i][5]).normalized().toRotationMatrix();
 
-        Ps[i] = rot_diff * Vector3d(para_Pose[i][0] - para_Pose[0][0],
-                                    para_Pose[i][1] - para_Pose[0][1],
-                                    para_Pose[i][2] - para_Pose[0][2]) +
+        Ps[i] = rot_diff * Vector3d(window_scale*(para_Pose[i][0] - para_Pose[0][0]),
+                                    window_scale*(para_Pose[i][1] - para_Pose[0][1]),
+                                    window_scale*(para_Pose[i][2] - para_Pose[0][2])) +
                 origin_P0;
 
         Vs[i] = rot_diff * Vector3d(para_SpeedBias[i][0],
@@ -2407,6 +2276,8 @@ void MCVOEstimator::double2vector()
                           para_SpeedBias[i][7],
                           para_SpeedBias[i][8]);
     }
+
+    window_scale = 1.0;
 
     // TODO: 3D 点更新
     // ------------------
@@ -2430,27 +2301,28 @@ void MCVOEstimator::double2vector()
     if (ESTIMATE_TD)
         td = para_Td[0][0];
 
-    // relative info between two loop frame
     if (relocalization_info)
     {
         Matrix3d relo_r;
         Vector3d relo_t;
+
+
         relo_r = rot_diff * Quaterniond(relo_Pose[6], relo_Pose[3], relo_Pose[4], relo_Pose[5]).normalized().toRotationMatrix();
         relo_t = rot_diff * Vector3d(relo_Pose[0] - para_Pose[0][0],
                                      relo_Pose[1] - para_Pose[0][1],
                                      relo_Pose[2] - para_Pose[0][2]) +
                  origin_P0;
+
         double drift_correct_yaw;
         drift_correct_yaw = Utility::R2ypr(prev_relo_r).x() - Utility::R2ypr(relo_r).x();
         drift_correct_r = Utility::ypr2R(Vector3d(drift_correct_yaw, 0, 0));
         drift_correct_t = prev_relo_t - drift_correct_r * relo_t;
+
+
         relo_relative_t = relo_r.transpose() * (Ps[relo_frame_local_index] - relo_t);
         relo_relative_q = relo_r.transpose() * Rs[relo_frame_local_index];
         relo_relative_yaw =
             Utility::normalizeAngle(Utility::R2ypr(Rs[relo_frame_local_index]).x() - Utility::R2ypr(relo_r).x());
-        // cout << "vins relo " << endl;
-        // cout << "vins relative_t " << relo_relative_t.transpose() << endl;
-        // cout << "vins relative_yaw " <<relo_relative_yaw << endl;
         relocalization_info = false;
     }
 }
@@ -2498,30 +2370,11 @@ bool MCVOEstimator::failureDetection()
 
         return true;
     }
-    // TODO (henryzh47): change to 6m/s
-    if (Vs[WINDOW_SIZE].norm() > 10.0)
-    {
-        ROS_ERROR("VINS big speed %f, restart estimator!", Vs[WINDOW_SIZE].norm());
 
-        return true;
-    }
-    /*
-    if (tic(0) > 1)
-    {
-        ROS_INFO(" big extri param estimation %d", tic(0) > 1);
-        return true;
-    }
-    */
     Vector3d tmp_P = Ps[WINDOW_SIZE];
-    if ((tmp_P - last_P).norm() > 40) //原来为20
+    if ((tmp_P - last_P).norm() > 40)
     {
         ROS_ERROR_STREAM(" big translation: " << (tmp_P - last_P).norm());
-
-        return true;
-    }
-    if (abs(tmp_P.z() - last_P.z()) > 3) //原来为1.5
-    {
-        ROS_ERROR_STREAM(" big z translation: " << abs(tmp_P.z() - last_P.z()));
 
         return true;
     }
@@ -2542,7 +2395,9 @@ void MCVOEstimator::optimization()
 {
     ceres::Problem problem;
     ceres::LossFunction *loss_function;
-    // loss_function = new ceres::HuberLoss(1.0);
+    for(int i = 0; i < NUM_OF_CAM; i++)
+        for(int j = 0; j < SIZE_POSE; j++)
+            para_Ex_Pose_cp[i][j] = para_Ex_Pose[i][j];
     loss_function = new ceres::CauchyLoss(1.0);
     for (int i = 0; i < WINDOW_SIZE + 1; i++)
     {
@@ -2556,7 +2411,6 @@ void MCVOEstimator::optimization()
         problem.AddParameterBlock(para_Ex_Pose[i], SIZE_POSE, local_parameterization);
         if (!ESTIMATE_EXTRINSIC)
         {
-            //      LOG(INFO) << "fix extinsic param";
             problem.SetParameterBlockConstant(para_Ex_Pose[i]);
         }
         else
@@ -2565,7 +2419,6 @@ void MCVOEstimator::optimization()
     if (ESTIMATE_TD)
     {
         problem.AddParameterBlock(para_Td[0], 1);
-        // problem.SetParameterBlockConstant(para_Td[0]);
     }
 
     TicToc t_whole, t_prepare;
@@ -2574,7 +2427,6 @@ void MCVOEstimator::optimization()
 #ifdef VISUAL_IMU_SUM_PRIOR
     if (last_marginalization_info)
     {
-        // construct new marginlization_factor
         MarginalizationFactor *marginalization_factor = new MarginalizationFactor(last_marginalization_info);
         problem.AddResidualBlock(marginalization_factor, nullptr,
                                  last_marginalization_parameter_blocks);
@@ -2599,17 +2451,13 @@ void MCVOEstimator::optimization()
         LOG(INFO) << "[imu_marginalization_parameter_blocks] size: " << last_imu_marginalization_parameter_blocks.size();
     }
 #endif
-    // remove IMU residual
-    // for (int i = 0; i < WINDOW_SIZE; i++)
-    // {
-    //     int j = i + 1;
-    //     if (pre_integrations[j]->sum_dt > 10.0)
-    //         continue;
-    //     IMUFactor *imu_factor = new IMUFactor(pre_integrations[j]);
-    //     problem.AddResidualBlock(imu_factor, nullptr, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
-    // }
-    int f_m_cnt = 0;
 
+    vector<int> host_vec;
+    for (int i = 0; i < WINDOW_SIZE + 2; i++)
+    {
+        host_vec.push_back(0);
+    }
+    int f_m_cnt = 0;
     // TODO: 使用 unordered map 代替　list
     for (int c = 0; c < NUM_OF_CAM; c++)
     {
@@ -2623,12 +2471,13 @@ void MCVOEstimator::optimization()
             if (!(landmark.second.used_num >= 2 &&
                   time_frameid2_int_frameid.at(landmark.second.kf_id) < WINDOW_SIZE - 2))
                 continue;
-
-            auto host_tid = landmark.second.kf_id; // 第一个观测值对应的就是主导真
+            auto host_tid = landmark.second.kf_id; 
             int host_id = time_frameid2_int_frameid.at(host_tid);
             const auto &obs = landmark.second.obs;
             Vector3d pts_i = obs.at(host_tid).point;
 
+            host_vec[host_id]++;
+            int final_target_id = 100;
             for (const auto &it_per_frame : obs)
             {
                 auto target_tid = it_per_frame.first;
@@ -2636,7 +2485,7 @@ void MCVOEstimator::optimization()
 
                 if (host_tid == target_tid)
                     continue;
-
+                final_target_id = target_id;
                 Vector3d pts_j = it_per_frame.second.point;
                 if (ESTIMATE_TD)
                 {
@@ -2669,120 +2518,67 @@ void MCVOEstimator::optimization()
                                              para_Pose[target_id],
                                              para_Ex_Pose[c],
                                              landmark.second.data.data());
-
-                    if (landmark.second.estimate_flag == KeyPointLandmark::EstimateFlag::DIRECT_MEASURED)
-                        problem.SetParameterBlockConstant(landmark.second.data.data());
+                        
                 }
                 f_m_cnt++;
             }
+
         }
     }
-    // TODO: 使用 unordered map 代替　list
 
     ROS_DEBUG("visual measurement count: %d", f_m_cnt);
     ROS_DEBUG("prepare for ceres: %f", t_prepare.toc());
-
+  	
     if (relocalization_info)
     {
-        if (c_cur == c_old)
+
+        ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();//
+        problem.AddParameterBlock(relo_Pose, SIZE_POSE, local_parameterization); 
+       
+        int opt_num = 0;
+        int opt_num_f = 0;
+
+        for( int point_feature_id = 0; point_feature_id < match_points.size(); point_feature_id++)
         {
-            // printf("set relocalization factor! \n");
-            ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
-            problem.AddParameterBlock(relo_Pose, SIZE_POSE, local_parameterization);
-
-            // TODO: 使用 unordered map 代替　list
-            for (auto &match_point : match_points)
+            int feature_id = match_points[point_feature_id].z();
+        
+            if (f_manager.KeyPointLandmarks[c_p_cur[point_feature_id]].find(feature_id) != f_manager.KeyPointLandmarks[c_p_cur[point_feature_id]].end())
             {
-                int feature_id = match_point.z();
-
-                // 查看landmarks数据库中能否找到id号相同的landmark
-                if (f_manager.KeyPointLandmarks[c_cur].find(feature_id) != f_manager.KeyPointLandmarks[c_cur].end())
+                auto &landmark = f_manager.KeyPointLandmarks[c_p_cur[point_feature_id]].at(feature_id);
+            
+                opt_num_f++;
+                landmark.used_num = landmark.obs.size();
+                if (!(landmark.used_num >= 2 and time_frameid2_int_frameid.at(landmark.kf_id) < WINDOW_SIZE - 2))
                 {
-                    auto &landmark = f_manager.KeyPointLandmarks[c_cur].at(feature_id);
-
-                    // 确定landmark是否合法
-                    landmark.used_num = landmark.obs.size();
-                    if (!(landmark.used_num >= 2 and time_frameid2_int_frameid.at(landmark.kf_id) < WINDOW_SIZE - 2))
-                    {
-                        continue;
-                    }
-
-                    // 如果landmark合法
-                    auto host_tid = landmark.kf_id;
-                    int host_id = time_frameid2_int_frameid.at(host_tid);
-
-                    Vector3d pts_i = landmark.obs.at(host_tid).point;
-                    Vector3d pts_j = match_point;
-                    pts_j[2] = 1.0;
-
-                    ProjectionFactor *f = new ProjectionFactor(pts_i, pts_j);
-
-                    // TODO: 感觉需要把逆深度优化的写入到landmark中
-                    // -------------------------------------
-                    problem.AddResidualBlock(f,
-                                             loss_function,
-                                             para_Pose[host_id],
-                                             relo_Pose,
-                                             para_Ex_Pose[0],
-                                             landmark.data.data());
-                    // ------------------------------------
+                    continue;
                 }
+                opt_num++;
+                auto host_tid = landmark.kf_id;
+                int host_id = time_frameid2_int_frameid.at(host_tid);
+
+                Vector3d pts_i = landmark.obs.at(host_tid).point;
+                Vector3d pts_j = match_points[point_feature_id];
+                pts_j[2] = 1.0;
+                ProjectionFactor *f = new ProjectionFactor(pts_i, pts_j);
+                problem.AddResidualBlock(f,
+                                            loss_function,
+                                            para_Pose[host_id],
+                                            relo_Pose,
+                                            para_Ex_Pose[c_p_cur[point_feature_id]],
+                                            landmark.data.data());
             }
         }
+        
         // TODO: 使用 unordered map 代替　list
+
     }
-    // my work wang
 
-    // vector<int> camera_block_index;
-    // for (int camera_count = 0; camera_count < NUM_OF_CAM; camera_count++;)
-    // {
-    //     camera_block_index.push_back(camera_count);
-    // }
-    // double scales[NUM_OF_CAM][1];
-
-    // for (int i = 0; i < NUM_OF_CAM; i++)
-    // {
-    //     scales[i][0] = 10.0;
-    //     problem.AddParameterBlock(scales[i], 1);
-    // }
-
-    // Eigen::aligned_map<double, ImageFrame>::iterator frame_i;
-    // int i = 0;
-    // for (frame_i = localWindowFrames.begin(); frame_i != localWindowFrames.end(); frame_i++, i++)
-    // {
-    //     if (i == l)
-    //         continue;
-    //     for (int c1 = 0; c1 < valid_count; c1++)
-    //     {
-    //         int base_camera = camera_block_index[c1];
-
-    //         for (int c2 = c1 + 1; c2 < valid_count; c2++)
-    //         {
-    //             int ref_camera = camera_block_index[c2];
-    //             LOG(INFO) << "i: " << i << " base " << base_camera << " refer " << ref_camera;
-    //             Eigen::Matrix3d r_i = frame_i->second.Twi[base_camera].rotationMatrix();
-    //             Eigen::Matrix3d r_j = frame_i->second.Twi[ref_camera].rotationMatrix();
-    //             AlignmentFactor *f = new AlignmentFactor(r_i, frame_i->second.Twi[base_camera].pos,
-    //                                                      r_j, frame_i->second.Twi[ref_camera].pos,
-    //                                                      RIC[base_camera], TIC[base_camera],
-    //                                                      RIC[ref_camera], TIC[ref_camera]);
-
-    //             problem.AddResidualBlock(f, nullptr, scales[base_camera], scales[ref_camera]);
-    //         }
-    //     }
-    // }
-    // LOG(INFO) << "Solve";
-    // 
 
     ceres::Solver::Options options;
 
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    // options.num_threads = 2;
     options.trust_region_strategy_type = ceres::DOGLEG;
     options.max_num_iterations = NUM_ITERATIONS;
-    // options.use_explicit_schur_complement = true;
-    // options.minimizer_progress_to_stdout = true;
-    // options.use_nonmonotonic_steps = true;
     if (marginalization_flag == MarginalizationFlag::MARGIN_OLD)
         options.max_solver_time_in_seconds = SOLVER_TIME * 4.0 / 5.0;
     else
@@ -2790,7 +2586,9 @@ void MCVOEstimator::optimization()
     TicToc t_solver;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    // cout << summary.BriefReport() << endl;
+    Eigen::Vector3d real_pretic(0.0, 0.0, 0.0);
+    Eigen::Vector3d estimated_pretic(0.0, 0.0, 0.0);
+
     ROS_DEBUG("Iterations : %d", static_cast<int>(summary.iterations.size()));
     ROS_DEBUG("solver costs: %f", t_solver.toc());
 
@@ -2821,22 +2619,8 @@ void MCVOEstimator::optimization()
             marginalization_info->addResidualBlockInfo(residual_block_info);
         }
 
-        // {
-        //     if (pre_integrations[1]->sum_dt < 10.0)
-        //     {
-        //         IMUFactor *imu_factor = new IMUFactor(pre_integrations[1]);
-        //         ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(imu_factor, nullptr,
-        //                                                                        vector<double *>{para_Pose[0],
-        //                                                                                         para_SpeedBias[0],
-        //                                                                                         para_Pose[1],
-        //                                                                                         para_SpeedBias[1]},
-        //                                                                        vector<int>{0, 1});
-        //         marginalization_info->addResidualBlockInfo(residual_block_info);
-        //     }
-        // }
         int v_count = 0;
         {
-            // int feature_index = -1;
             for (int c = 0; c < NUM_OF_CAM; c++)
             {
 #if SINGLE_CAM_DEBUG
@@ -2915,10 +2699,8 @@ void MCVOEstimator::optimization()
         ROS_DEBUG("pre marginalization %f ms", t_pre_margin.toc());
 
         TicToc t_margin;
-        // LOG(INFO) << v_count;
         if (v_count != 0)
             marginalization_info->marginalize();
-        // LOG(INFO) << "Finish marg";
         ROS_DEBUG("marginalization %f ms", t_margin.toc()); 
 
         std::unordered_map<long, double *> addr_shift;
@@ -3021,9 +2803,102 @@ void MCVOEstimator::optimization()
             last_marginalization_parameter_blocks = parameter_blocks;
         }
     }
-    //    LOG(INFO) << "whole marginalization costs: " << t_whole_marginalization.toc();
 
-    //    LOG(INFO) << "whole time for ceres: " << t_whole.toc();
+    opt_times++;
+    if(opt_times%50 == 0)
+    {
+        depth_scale.clear();
+        ceres::Problem problem_c;
+        ceres::LossFunction *loss_function_c;
+        vector<bool> state_flag;
+        for (int c = 0; c < NUM_OF_CAM; c++)
+            state_flag.push_back(false);
+        for (int c = 0; c < NUM_OF_CAM; c++)
+        {
+            Eigen::Vector3d tic_c(TIC[c].x(), TIC[c].y(), TIC[c].z());
+            Quaterniond q{RIC[c]};
+            Eigen::Quaterniond qic_c(q.w(), q.x(), q.y(), q.z());
+            for (int i = 0; i <= WINDOW_SIZE; i++)
+            {
+                Eigen::Vector3d P(para_Pose[i][0], para_Pose[i][1], para_Pose[i][2]);
+                Eigen::Quaterniond Q(para_Pose[i][6], para_Pose[i][3], para_Pose[i][4], para_Pose[i][5]);
+
+                Eigen::Quaterniond R = Q*qic_c;
+                Eigen::Vector3d T = P + Q*tic_c;
+                para_cam_Pose[c][i][0] = T.x();
+                para_cam_Pose[c][i][1] = T.y();
+                para_cam_Pose[c][i][2] = T.z();
+                Quaterniond q{R};
+                para_cam_Pose[c][i][3] = q.x();
+                para_cam_Pose[c][i][4] = q.y();
+                para_cam_Pose[c][i][5] = q.z();
+                para_cam_Pose[c][i][6] = q.w();
+                ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
+                problem_c.AddParameterBlock(para_cam_Pose[c][i], SIZE_POSE, local_parameterization);
+            }
+    #if SINGLE_CAM_DEBUG
+            if (c != base_camera)
+                continue;
+    #endif
+            if (f_manager.KeyPointLandmarks[c].size() > 100)
+                state_flag[c] = true;
+            for (auto &landmark : f_manager.KeyPointLandmarks[c])
+            {
+                landmark.second.used_num = landmark.second.obs.size();
+                if (!(landmark.second.used_num >= 2 &&
+                    time_frameid2_int_frameid.at(landmark.second.kf_id) < WINDOW_SIZE - 2))
+                    continue;
+                auto host_tid = landmark.second.kf_id; // 第一个观测值对应的就是主导真
+                int host_id = time_frameid2_int_frameid.at(host_tid);
+                const auto &obs = landmark.second.obs;
+                Vector3d pts_i = obs.at(host_tid).point;
+                for (const auto &it_per_frame : obs)
+                {
+                    auto target_tid = it_per_frame.first;
+                    int target_id = time_frameid2_int_frameid.at(target_tid);
+
+                    if (host_tid == target_tid)
+                        continue;
+
+                    Vector3d pts_j = it_per_frame.second.point;
+                    ProjectionMCFactor *f = new ProjectionMCFactor(pts_i, pts_j);
+                    problem_c.AddResidualBlock(f,
+                                                loss_function_c,
+                                                para_cam_Pose[c][host_id],
+                                                para_cam_Pose[c][target_id],
+                                                landmark.second.data.data());
+
+                    problem_c.SetParameterBlockConstant(landmark.second.data.data());
+                }
+            }
+        }  
+        ceres::Solver::Options options_c;
+        options_c.max_solver_time_in_seconds = SOLVER_TIME;
+        TicToc t_solver;
+        ceres::Solver::Summary summary_c;
+        ceres::Solve(options_c, &problem_c, &summary_c);
+
+        VectorXd x;
+        bool result = setScale(x, state_flag);
+        if (x.size() > 1)
+        {
+            int num_s = 0;
+            for(int num = 0; num < state_flag.size(); num++)
+            {
+                depth_scale.push_back(1.0);
+                if(state_flag[num])
+                {
+                    if((abs(x[num_s]/x[0] - 1) > 0.01)&&abs(x[num_s]/x[0] - 1) < 0.4)
+                        depth_scale[num] = x[0]/x[num_s];
+                    num_s++;
+                }
+
+            }
+        }
+    }
+
+    double2vector();
+
 }
 
 void MCVOEstimator::slideWindow()
@@ -3162,25 +3037,146 @@ void MCVOEstimator::setReloFrame(double _frame_stamp,
                                  Eigen::aligned_vector<Vector3d> &_match_points,
                                  const Vector3d &_relo_t,
                                  const Matrix3d &_relo_r,
-                                 int c_cur_,
-                                 int c_old_)
+                                 vector<int> &c_cur_,
+                                 vector<int> &c_old_,
+                                 const Vector3d &loop_t,
+                                 const Matrix3d &loop_r)
 {
     relo_frame_stamp = _frame_stamp;
     relo_frame_index = _frame_index;
+    if(relo_frame_index - last_frame >=10)
+    {
+        last_frame = relo_frame_index;
+        scale_opt_flag = true;
+    }
     match_points.clear();
     match_points = _match_points;
     prev_relo_t = _relo_t;
     prev_relo_r = _relo_r;
-    c_cur = c_cur_;
-    c_old = c_old_;
+    c_p_cur.clear();
+    c_p_old.clear();
+    Quaterniond Q(loop_r);
+    for(int i = 0; i < c_cur_.size(); i++)
+    {
+        c_p_cur.push_back(c_cur_[i]);
+        c_p_old.push_back(c_old_[i]);
+    } 
+
+    		int k_num = 0;
+		for(int i = 0; i < (int)c_p_cur.size(); i++)
+		{
+			// cout << c_p_cur[i] << "  -->  " << c_p_old[i] << "     " << endl;
+			if(c_p_cur[i] == c_p_old[i])
+				k_num++;
+		}
+		cout << endl;
+		cout << "ratio is  xxxxxxxxxxxxxxx" << k_num << "  /  "<<c_p_cur.size() << endl;
+    // c_cur = c_cur_;
+    // c_old = c_old_;
     for (int i = 0; i < WINDOW_SIZE; i++)
     {
         if (relo_frame_stamp == Headers[i].stamp.toSec())
         {
             relo_frame_local_index = i;
             relocalization_info = true;
-            for (int j = 0; j < SIZE_POSE; j++)
-                relo_Pose[j] = para_Pose[i][j];
+            relo_Pose[0] = loop_t.x();
+            relo_Pose[1] = loop_t.y();
+            relo_Pose[2] = loop_t.z();
+            relo_Pose[3] = Q.x();
+            relo_Pose[4] = Q.y();
+            relo_Pose[5] = Q.z();
+            relo_Pose[6] = Q.w();
         }
     }
+}
+
+bool MCVOEstimator::setScale(VectorXd &x, vector<bool> state)
+{
+    ceres::Problem problem;
+
+    double scales[NUM_OF_CAM][1];
+    int camera_count = 0;
+    vector<int> camera_block_index;
+    for (auto i : state)
+    {
+        if (i)
+        {
+            camera_block_index.push_back(camera_count);
+        }
+        camera_count++;
+    }
+    int valid_count = (int)camera_block_index.size();
+    if (valid_count < 2)
+    {
+        LOG(INFO) << "Less than 2 cameras are valid for alignment!";
+        return false;
+    }
+    for (int i = 0; i < valid_count; i++)
+    {
+        scales[i][0] = 10.0;
+        problem.AddParameterBlock(scales[i], 1);
+    }
+
+    for (int i = 0; i <= WINDOW_SIZE; i++)
+    {
+        for (int c1 = 0; c1 < camera_count; c1++)
+        {
+            int base_cam = camera_block_index[c1];
+            for (int c2 = c1 + 1; c2 < NUM_OF_CAM; c2++)
+            {
+                int ref_cam = camera_block_index[c2];
+                Eigen::Vector3d P_cam1(para_cam_Pose[base_cam][i][0], para_cam_Pose[base_cam][i][1], para_cam_Pose[base_cam][i][2]);
+                Eigen::Quaterniond Q_cam(para_cam_Pose[base_cam][i][6], para_cam_Pose[base_cam][i][3], para_cam_Pose[base_cam][i][4], para_cam_Pose[base_cam][i][5]);
+                Eigen::Matrix3d R_cam1 = Q_cam.toRotationMatrix();
+                Eigen::Vector3d P_cam2(para_cam_Pose[ref_cam][i][0], para_cam_Pose[ref_cam][i][1], para_cam_Pose[ref_cam][i][2]);
+                Eigen::Quaterniond Q_cam2(para_cam_Pose[ref_cam][i][6], para_cam_Pose[ref_cam][i][3], para_cam_Pose[ref_cam][i][4], para_cam_Pose[ref_cam][i][5]);
+                Eigen::Matrix3d R_cam2 = Q_cam.toRotationMatrix();
+                AlignmentFactor *f = new AlignmentFactor(R_cam1, P_cam1,
+                                                        R_cam2, P_cam2,
+                                                        RIC[base_cam], TIC[base_cam],
+                                                        RIC[ref_cam], TIC[ref_cam]);
+                problem.AddResidualBlock(f, nullptr, scales[c1], scales[c2]);
+            }
+        }
+    }
+
+        LOG(INFO) << "Solve";
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    // options.minimizer_progress_to_stdout = true;        
+    if (marginalization_flag == MarginalizationFlag::MARGIN_OLD)
+        options.max_solver_time_in_seconds = SOLVER_TIME * 4.0 / 5.0;
+    else
+        options.max_solver_time_in_seconds = SOLVER_TIME;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    if (summary.termination_type == ceres::CONVERGENCE || summary.final_cost < 5e-03)
+    {
+        cout << "multi cam alignment converge" << endl;
+    }
+    else
+    {
+        LOG(INFO) << " multi cam alignment diverges!";
+        return false;
+    }
+
+    VectorXd ss(valid_count);
+    for (int i = 0; i < valid_count; i++)
+    {
+        LOG(INFO) << i << " scale: " << scales[i][0] / 1e4;
+        if (scales[i][0] < 0)
+        {
+            LOG(INFO) << "Multi alignment fails";
+            return false;
+        }
+        ss[i] = scales[i][0] /1e4;
+
+    }
+    std::cout << ss[0] << std::endl;
+
+    x = ss;
+
+    return true;
 }

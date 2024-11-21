@@ -37,6 +37,9 @@
 
 #include "trackerbase.h"
 
+#include <unistd.h>
+#include <ros/package.h>
+
 #define USE_ORB_SLAM2_DETECTOR 1
 
 using namespace std;
@@ -52,7 +55,7 @@ namespace MCVO
     class SupFeatureTracker : public TrackerBase
     {
     public:
-        SupFeatureTracker();
+        SupFeatureTracker(int row, int col);
 
         // void readImage(const cv::Mat &_img, const cv::Mat &_depth, double _cur_time);
 
@@ -64,7 +67,7 @@ namespace MCVO
 
         void setMask();
 
-        void addPoints();
+        void addPoints(int cols, int rows);
 
         bool updateID(unsigned int i);
 
@@ -100,12 +103,25 @@ namespace MCVO
         vector<cv::Point2f> prev_un_pts, cur_un_pts;
         vector<cv::Point2f> pts_velocity;
         vector<int> idx_vector;
+        vector<pair<int, int>> score_list;
         /* move to tracker base
         vector<int> ids;
         vector<int> track_cnt;
         camodocal::CameraPtr m_camera;
         int n_id;
         */
+        struct Node
+        {
+            pair<cv::Point2f, cv::Point2f> Size;
+            vector<int> Point_Lists;
+        };
+
+        vector<Node> node_List;
+        vector<int> List;
+        vector<vector<int>> listid_List;
+        Node node;
+
+
         map<int, cv::Point2f> cur_un_pts_map;
         map<int, cv::Point2f> prev_un_pts_map;
 
@@ -117,7 +133,6 @@ namespace MCVO
         torch::jit::script::Module model;
         cv::Ptr<_cv::SuperGlue> superGlue;
         cv::Ptr<cv::Feature2D> superPoint;
-        cv::Ptr<cv::Feature2D> superPoint_pin;
         float EPSILON;
 
         std::shared_ptr<MCVO::MCVOcamera> cam;

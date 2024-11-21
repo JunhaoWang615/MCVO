@@ -9,6 +9,7 @@
 #include "initial/initial_sfm.h"
 #include "initial/initial_alignment.h"
 #include "initial/initial_ex_rotation.h"
+#include "initial/alignment_factor.h"
 #include <std_msgs/Header.h>
 #include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
@@ -19,6 +20,7 @@
 #include "factor/pose_local_parameterization.h"
 #include "factor/projection_factor.h"
 #include "factor/projection_td_factor.h"
+#include "factor/projection_mc_factor.h"
 #include "factor/marginalization_factor.h"
 #include "factor/SE3AbsolutatePoseFactor.h"
 // #include "factor/SE3RelativtePoseFactor.h"
@@ -39,6 +41,7 @@ namespace MCVO
     // initialize after loading parameters
     class MCVOEstimator
     {
+        
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         MCVOEstimator();
@@ -62,8 +65,13 @@ namespace MCVO
                      Eigen::aligned_vector<Vector3d> &_match_points,
                      const Vector3d &_relo_t,
                      const Matrix3d &_relo_r,
-                     int c_cur,
-                     int c_old);
+                     std::vector<int> &c_cur,
+                     std::vector<int> &c_old,
+                     const Vector3d &loop_t,
+                     const Matrix3d &loop_r);
+
+        bool setScale(VectorXd &x, vector<bool> state);
+
 
         // -----------------
 
@@ -179,19 +187,35 @@ namespace MCVO
         double initial_timestamp;
 
         double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
+        double*** para_cam_Pose;
+        double last_para_Pose[WINDOW_SIZE][3];
+        double Pose_Scale[WINDOW_SIZE];
+        bool first_scale_flag = true;
         double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS];
         double para_Feature[NUM_OF_F][SIZE_FEATURE];
         // double para_Ex_Pose[NUM_OF_CAM][SIZE_POSE];
         double** para_Ex_Pose;
+        double** para_Ex_Pose_cp;
         double para_Retrive_Pose[SIZE_POSE];
         double para_Td[1][1];
         double para_Tr[1][1];
 
+        vector<double> depth_scale;
+        int scale_num = 0;
+
+        int opt_times = 0;
+        double last_scale = 1.0;
+        int rescale_times = 0;
+        double start_scale = 0.0;
+        bool isnan = false;
         int loop_window_index;
+        double window_scale = 1.0;
 
         // TODO: For relocalization
         // Not supported in V1
-        int c_cur, c_old;
+        // int c_cur, c_old;
+        vector<int> c_p_cur;
+        vector<int> c_p_old;
 
 #if 0
     // TODO: 原有的VINS-Mono 是将视觉和IMU 的先验和在一起
@@ -241,5 +265,8 @@ namespace MCVO
         std::vector<bool> cam_state;
         MCVOfrontend* frontend_ = nullptr;
         int est_num;
+
+        int last_frame = 0;
+        bool scale_opt_flag = false;
     };
 } // namespace MCVO

@@ -26,18 +26,31 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   camera_model
   )
-
+find_package(roslib REQUIRED)
 find_package(Gflags)
-find_package(Glog)
+# set(GLOG_LIBRARY "/usr/local/lib/libglog.so")
+# set(GLOG_INCLUDE_DIR "/usr/local/include")
+find_package(Glog  REQUIRED) 
+find_library(GLOG_LIBRARY NAMES glog PATHS /usr/local/lib)
+find_path(GLOG_INCLUDE_DIR NAMES logging.h PATHS /usr/local/include/glog)
+# set(GLOG_INCLUDE_DIRS /usr/local/include)
+# set(GLOG_LIBRARIES /usr/local/lib/libglog.so)
 
+message(STATUS "Glog Libraries: ${GLOG_LIBRARIES}")
 find_package(Eigen3 REQUIRED)
 
 find_package(PCL REQUIRED)
+message(STATUS "Found PCL version: ${PCL_VERSION}")
 find_package(Ceres REQUIRED)
-find_package(TBB REQUIRED)
+message(STATUS "Ceres Solver version: ${CERES_VERSION}")
+message(STATUS "Ceres Solver include dirs: ${CERES_INCLUDE_DIRS}")
+message(STATUS "Ceres Solver libraries: ${CERES_LIBRARIES}")
 
+
+find_package(TBB REQUIRED)   
+message(STATUS "Found TBB version: ${TBB_VERSION}")
 find_package(vpi 2.0 REQUIRED)
-
+  
 #find_package( Sophus REQUIRED )
 #include_directories( ${Sophus_INCLUDE_DIRS} )
 include_directories(thirdparty/Sophus)
@@ -102,6 +115,7 @@ add_executable(mcvo_estimator
   src/Estimator/factor/pose_local_parameterization.cpp
   src/Estimator/factor/projection_factor.cpp
   src/Estimator/factor/projection_td_factor.cpp
+  src/Estimator/factor/projection_mc_factor.cpp
   src/Estimator/factor/marginalization_factor.cpp
   src/Estimator/factor/SE3AbsolutatePoseFactor.cpp
 
@@ -141,9 +155,9 @@ target_link_libraries(mcvo_estimator
   ${TORCH_LIBRARIES}
   ${GFLAGS_LIBRARIES}
   /lib/x86_64-linux-gnu/libuuid.so.1 
-
   glog
-  vpi)
+  vpi
+  ${roslib_LIBRARIES}  )
 
 # add_executable(
 #   pose_graph3d

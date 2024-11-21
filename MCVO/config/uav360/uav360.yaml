@@ -1,0 +1,359 @@
+%YAML:1.0
+
+# enum camera_type
+# {
+#     MONOCULAR,
+#     STEREO,
+#     RGBD,
+#     THERMAL,
+#     LIDAR,
+#     UNKNOWN
+# };
+imu_topic: "/IMU_oxts"
+depth_topic: "/velodyne_points"
+laser_topic: "/velodyne_points"
+odom_topic: "/integrated_to_init"
+output_path: "/home/wang/datas/original-pose/multi-camera/00-2-super3"
+
+lio_world_frame: "sensor_init"
+vins_world_frame: "vins_world"
+camera_frame: "vins_camera"
+lio_laser_frame: "sensor"
+laser_frame: "sensor"
+vins_imu_frame: "vins_imu"
+
+use_lidar_odom_meas: 0 # 1   means use lidar odometry constraints in vins system
+scale_lidar_absolute_factor: 3
+
+align_camera_lidar_estimation: 0 # align camera and lidar estimation for visualization
+
+sensor_list: ['camera_00', 'camera_01', 'camera_02', 'camera_03']
+# sensor_list: [ 'camera_02', 'camera_03']
+
+camera_00:
+  sensor_type: 0
+  left_image_topic: "/camera_00"
+  frame_id: "camera_00"
+  camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_00.yaml"
+  extrinsicRotation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data:  [ 1.0,  0.0,  0.0,
+             0.0, 1.0,  0.0,  
+             0.0,  0.0, 1.0]
+  #Translation from camera frame to imu frame, imu^T_cam
+  extrinsicTranslation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [0, 0, 0]
+
+  #feature traker parameters
+  max_cnt: 200    # max feature number in feature tracking
+  min_dist: 20            # min distance between two features
+  freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+  F_threshold: 1.0        # ransac threshold (pixel)
+  show_track: 1           # publish tracking image as topic
+  equalize: 1             # if image is too dark or light, trun on equalize to find enough features
+  fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask.jpg"
+  image_width: 838
+  image_height: 720
+  visualize: 1
+  Detector_type: 3
+  use_vpi: 0
+  SPHORBrootPath: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/src/Frontend/feature_tracker/SPHORB/" # model path of SPHORB
+  mirror_parameters:
+    xi: 1.81167414e+00
+  distortion_parameters:
+    k1: -0.24355013 
+    k2: 0.20362954
+    p1: 0.00048753
+    p2: 0.00031327
+  projection_parameters:
+    gamma1: 692.71182129
+    gamma2: 692.82313383
+    u0: 421.29033854
+    v0: 342.12877758
+    # k1: -0.344441   
+    # k2: 0.141678
+    # p1: 0.000414
+    # p2: -0.000222
+# fx: 788.629315
+# fy: 786.382230
+# cx: 687.158398
+# cy: 317.752196
+
+# camera_01:
+#   sensor_type: 0
+#   left_image_topic: "/camera_01"
+#   frame_id: "camera_01"
+#   camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_01.yaml"
+camera_03:
+  sensor_type: 0
+  left_image_topic: "/camera_03"
+  frame_id: "camera_03"
+  camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_03.yaml"
+  extrinsicRotation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data: [-0.99996459, -0.00693447,  0.00476762,
+          -0.00699351,  0.99989765, -0.0124811,
+          -0.00468058, -0.012514,   -0.99991074]
+
+  #Translation from camera frame to imu frame, imu^T_cam
+  extrinsicTranslation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [0.00063231282725015141, -0.00053786801881711339, -0.091186351351810385]
+
+  #feature traker parameters
+  max_cnt: 200    # max feature number in feature tracking
+  min_dist: 20            # min distance between two features
+  freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+  F_threshold: 1.0        # ransac threshold (pixel)
+  show_track: 1           # publish tracking image as topic
+  equalize: 1             # if image is too dark or light, trun on equalize to find enough features
+  fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask.jpg"
+  image_width: 838
+  image_height: 720
+  visualize: 1
+  Detector_type: 3
+  use_vpi: 0
+  SPHORBrootPath: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/src/Frontend/feature_tracker/SPHORB/" # model path of SPHORB
+  mirror_parameters:
+    xi: 1.78711155e+00
+  distortion_parameters:
+    k1: -0.25488638
+    k2: 0.18766678
+    p1: 0.00058592
+    p2: 0.00110638
+  projection_parameters:
+    gamma1: 687.85162069
+    gamma2: 687.66752998
+    u0: 413.97512427
+    v0: 345.00529072
+  # mirror_parameters:  
+  #   xi: 1.77046181 
+  # distortion_parameters:
+  #   k1: -0.26076239
+  #   k2: 0.1886713
+  #   p1: 0.00092547
+  #   p2: -0.0010098 
+  # projection_parameters:
+  #   gamma1: 688.21952096
+  #   gamma2: 688.22048868
+  #   u0: 415.48978856 
+  #   v0: 362.36252391
+    # k1: -0.353195
+    # k2: 0.161996
+    # p1: 0.000383
+    # p2: -0.000242
+    # fx: 785.134093
+    # fy: 782.346289
+    # cx: 686.437073
+    # cy: 321.352788
+
+# camera_02:
+#   sensor_type: 0
+#   left_image_topic: "/camera_02"
+#   frame_id: "camera_02"
+#   camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_02.yaml"
+camera_01:
+  sensor_type: 0
+  left_image_topic: "/camera_01"
+  frame_id: "camera_01"
+  camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_01.yaml"
+  extrinsicRotation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data: [-0.00881347,  0.00065983,  0.99996094,
+          -0.00077917,  0.99999947, -0.00066672,
+          -0.99996086, -0.00078502, -0.00881296]
+  #Translation from camera frame to imu frame, imu^T_cam
+  extrinsicTranslation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [ 0.043319266026031256, -0.00031022077832298662, -0.045965688274229047]
+
+  #feature traker parameters
+  max_cnt: 200    # max feature number in feature tracking
+  min_dist: 20            # min distance between two features
+  freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+  F_threshold: 1.0        # ransac threshold (pixel)
+  show_track: 1           # publish tracking image as topic
+  equalize: 1             # if image is too dark or light, trun on equalize to find enough features
+  fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask.jpg"
+  image_width: 838
+  image_height: 720
+  visualize: 1
+  Detector_type: 3
+  use_vpi: 0
+  SPHORBrootPath: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/src/Frontend/feature_tracker/SPHORB/" # model path of SPHORB
+  mirror_parameters:  
+    xi: 1.77046181 
+  distortion_parameters:
+    k1: -0.26076239
+    k2: 0.1886713
+    p1: 0.00092547
+    p2: -0.0010098 
+  projection_parameters:
+    gamma1: 688.21952096
+    gamma2: 688.22048868
+    u0: 415.48978856 
+    v0: 362.36252391
+  # mirror_parameters:
+  #   xi: 1.78908346e+00
+  # distortion_parameters:
+  #   k1: -0.25126935
+  #   k2: 0.18944099
+  #   p1: -0.00106281
+  #   p2: 0.00111316
+  # projection_parameters:
+  #   gamma1: 688.5033355
+  #   gamma2: 688.65481624
+  #   u0: 416.61181632 
+  #   v0: 355.23491325
+
+
+# camera_03:
+#   sensor_type: 0
+#   left_image_topic: "/camera_03"
+#   frame_id: "camera_03"
+#   camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_03.yaml"
+camera_02:
+  sensor_type: 0
+  left_image_topic: "/camera_02"
+  frame_id: "camera_02"
+  camera_config_file: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/uav360/cameras/camera_02.yaml"
+  extrinsicRotation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: d
+    data:  [0.00273352, -0.00500991, -0.99998371,
+            0.00378071,  0.99998036, -0.00499955,
+            0.99998912, -0.00376698,  0.00275241]
+  #Translation from camera frame to imu frame, imu^T_cam
+  extrinsicTranslation_imu_camera: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: d
+    data: [-0.043561411395340428, -3.5951820262836633e-05, -0.045177587691548428]
+
+  #feature traker paprameters
+  max_cnt: 200    # max feature number in feature tracking
+  min_dist: 20            # min distance between two features
+  freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
+  F_threshold: 1.0        # ransac threshold (pixel)
+  show_track: 1           # publish tracking image as topic
+  equalize: 1             # if image is too dark or light, trun on equalize to find enough features
+  fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask.jpg"
+  image_width: 838
+  image_height: 720
+  visualize: 1
+  Detector_type: 3
+  use_vpi: 0
+  SPHORBrootPath: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/src/Frontend/feature_tracker/SPHORB/"
+  mirror_parameters:
+    xi: 1.78908346e+00
+  distortion_parameters:
+    k1: -0.25126935
+    k2: 0.18944099
+    p1: -0.00106281
+    p2: 0.00111316
+  projection_parameters:
+    gamma1: 688.5033355
+    gamma2: 688.65481624
+    u0: 416.61181632 
+    v0: 355.23491325
+  # mirror_parameters:
+  #   xi: 1.78711155e+00
+  # distortion_parameters:
+  #   k1: -0.25488638
+  #   k2: 0.18766678
+  #   p1: 0.00058592
+  #   p2: 0.00110638
+  # projection_parameters:
+  #   gamma1: 687.85162069
+  #   gamma2: 687.66752998
+  #   u0: 413.97512427
+  #   v0: 345.00529072
+
+
+
+
+
+
+# Extrinsic parameter between IMU and Camera.
+estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+  # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
+# 2  Don't know anything about extrinsic parameters. You don't need to give R,T. We will try to calibrate it. Do some rotation movement at beginning.
+#If you choose 0 or 1, you should write down the following matrix.
+#Rotation from camera frame to imu frame, imu^R_cam
+
+#optimization parameters
+max_solver_time: 0.04  # max solver itration time (ms), to guarantee real time
+max_num_iterations: 8   # max solver itrations, to guarantee real time
+keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
+
+#imu parameters       The more accurate parameters you provide, the better performance
+#for handheld, wheeld
+acc_n: 0.08          # accelerometer measurement noise standard deviation. #0.2
+gyr_n: 0.004         # gyroscope measurement noise standard deviation.     #0.05
+acc_w: 0.00004         # accelerometer bias random work noise standard deviation.  #0.02
+gyr_w: 2.0e-6       # gyroscope bias random work noise standard deviation.     #4.0e-5
+
+#for tracked applications
+#acc_n: 0.5          # accelerometer measurement noise standard deviation. #0.2
+#gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05
+#acc_w: 0.001         # accelerometer bias random work noise standard deviation.  #0.02
+#gyr_w: 2.0e-5       # gyroscope bias random work noise standard deviation.     #4.0e-5
+
+
+
+g_norm: 9.81007       # gravity magnitude
+
+#loop closure parameters
+loop_closure: 0                    # start loop closure
+fast_relocalization: 0             # useful in real-time and large project
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+pose_graph_save_path: "/home/wang/datas/original-pose/KITTI-03-Super-pose" # save and load path
+
+#unsynchronization parameters
+estimate_td: 0                      # online estimate time offset between camera and imu
+td: 0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#rolling shutter parameters
+rolling_shutter: 0                      # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0.033               # unit: s. rolling shutter read out time per frame (from data sheet).
+
+#visualization parameters
+save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0
+visualize_imu_forward: 0        # output imu forward propogation to achieve low latency and high frequence results
+visualize_camera_size: 0.4      # size of camera marker in RVIZ
+
+# Kd tree search parameter
+lidar_search_radius: 0.1
+
+# debug
+# whether to estimate scale when lidar provided
+estimate_scale: 1
+scale: 0.5
+depth_support_init: 0
+skip_default_init_method: 0
+
+# PnP simple init, depth information should be provided
+PnP_simple_init: 0
+
+
+#rolling shutter parameters
+rolling_shutter: 0                      # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0.033               # unit: s. rolling shutter read out time per frame (from data sheet).

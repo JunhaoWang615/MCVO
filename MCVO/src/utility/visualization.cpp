@@ -9,7 +9,7 @@ ros::Publisher pub_odometry, pub_latest_odometry, pub_loam_odometry;
 
 ros::Publisher pub_path, pub_relo_path;
 
-ros::Publisher pub_point_cloud, pub_margin_cloud;
+ros::Publisher pub_point_cloud, pub_margin_cloud; 
 
 ros::Publisher pub_lidar_cloud;
 
@@ -18,13 +18,6 @@ ros::Publisher pub_key_poses;
 ros::Publisher pub_relo_relative_pose;
 
 ros::Publisher pub_camera_pose;
-
-// publisher current cam
-// ros::Publisher pub_camera_pose_visual;
-
-// publisher slide window camera pose
-
-// ros::Publisher pub_slidewindow_camera_pose;
 
 nav_msgs::Path path, relo_path;
 
@@ -45,10 +38,6 @@ ros::Publisher pub_delta_t;
 ros::Publisher pub_vloamPath;
 
 nav_msgs::Path violoamPath;
-
-// CameraPoseVisualization cameraposevisual(0, 1, 0, 1);
-
-// CameraPoseVisualization keyframebasevisual(0.0, 0.0, 1.0, 1.0);
 
 static double sum_of_path = 0;
 
@@ -74,10 +63,6 @@ void registerPub(ros::NodeHandle &n)
   pub_camera_pose = n.advertise<nav_msgs::Odometry>("camera_pose", 1000);
   pub_map_projection_image =
       n.advertise<sensor_msgs::Image>("depth_image", 1000);
-  // pub_camera_pose_visual =
-  // n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1000);
-  // pub_slidewindow_camera_pose =
-  //     n.advertise<visualization_msgs::MarkerArray>("slidewindow_pose", 1000);
   pub_keyframe_pose = n.advertise<nav_msgs::Odometry>("keyframe_pose", 1000);
   pub_keyframe_point =
       n.advertise<sensor_msgs::PointCloud>("keyframe_point", 1000);
@@ -88,11 +73,6 @@ void registerPub(ros::NodeHandle &n)
   pub_delta_v = n.advertise<std_msgs::Float64>("delta_v", 1000);
   pub_delta_t = n.advertise<std_msgs::Float64>("delta_t", 1000);
   pub_vloamPath = n.advertise<nav_msgs::Path>("vio_loam_path", 100);
-
-  // cameraposevisual.setScale(1);
-  // cameraposevisual.setLineWidth(0.05);
-  // keyframebasevisual.setScale(1);
-  // keyframebasevisual.setLineWidth(0.05);
 }
 
 void pubLatestOdometry(const MCVOEstimator &estimator, const Eigen::Vector3d &P,
@@ -119,12 +99,11 @@ void pubLatestOdometry(const MCVOEstimator &estimator, const Eigen::Vector3d &P,
   q.setY(correct_q.y());
   q.setZ(correct_q.z());
   transform.setRotation(q);
-  // br.sendTransform(
-  //     tf::StampedTransform(transform, header.stamp, "world", "lidar"));
+
 
   nav_msgs::Odometry odometry;
-  odometry.pose.covariance[0] = double(estimator.failure_occur); // notify lidar odometry failure
-  odometry.pose.covariance[1] = double(estimator.initial_stat);  // notify lidar odometry VIO initial stat
+  odometry.pose.covariance[0] = double(estimator.failure_occur); 
+  odometry.pose.covariance[1] = double(estimator.initial_stat);  
   odometry.header = header;
   odometry.header.frame_id = LIO_World_Frame;
   odometry.pose.pose.position.x = T_w_l.pos.x();
@@ -606,28 +585,22 @@ void pubWindowLidarPointCloud(const MCVOEstimator &estimator,
     for (auto iter = pc_in_new.begin(); iter != pc_in_new.end(); ++iter)
     {
 
-      // 将点云的xyz,转换成uv
       Eigen::Vector3d P{iter->x, iter->y, iter->z};
       Eigen::Vector2d uv;
-      m_camera->spaceToPlane(P, uv);
+      m_camera ->spaceToPlane(P, uv); 
 
-      // 判断激光点云 是否在图像平面上
       if (iter->z > 0 and MCVOfrontend::is_in_image(uv, MCVOfrontend::Boundary,
                                                     1, nullptr))
-      { // && iter->z < 5.0
+      { 
 
         int u = static_cast<int>(uv(0));
         int v = static_cast<int>(uv(1));
 
-        // 设置最大最远距离
         float z_min = 1.0;
         float z_max = 50.0;
-        // 设置距离差
         float dz = z_max - z_min;
-        // 取深度值
         float z = iter->z;
-        //        if(v>30)
-        //        cout<<"v: "<<v<<endl;
+
         float r = 1.0;
         float g = 1.0;
         float b = 1.0;
@@ -726,6 +699,10 @@ void pubTF(const MCVOEstimator &estimator, const std_msgs::Header &header)
 
 void pubKeyframe(const MCVOEstimator &estimator)
 {
+
+	cout.setf(ios::fixed,ios::floatfield);
+	cout.precision(9);
+
 #if SHOW_LOG_DEBUG
   LOG(INFO)
       << "Pub key frame";
@@ -750,20 +727,20 @@ void pubKeyframe(const MCVOEstimator &estimator)
     odometry.pose.pose.orientation.y = R.y();
     odometry.pose.pose.orientation.z = R.z();
     odometry.pose.pose.orientation.w = R.w();
-    // printf("time: %f t: %f %f %f r: %f %f %f %f\n",
-    // odometry.header.stamp.toSec(), P.x(), P.y(), P.z(), R.w(), R.x(), R.y(),
-    // R.z()); "keyframe_pose"
-    pub_keyframe_pose.publish(odometry);
 
+    pub_keyframe_pose.publish(odometry);
+    int newcamera = 0;
     sensor_msgs::PointCloud point_cloud;
     point_cloud.header = estimator.Headers[WINDOW_SIZE - 2];
+
     for (int c = 0; c < NUM_OF_CAM; c++)
+    {
+        Matrix3d R_w_c = estimator.Rs[i] * estimator.ric[c];
+        Vector3d T_w_c = estimator.Ps[i] + estimator.Rs[i] * estimator.tic[c];
       for (auto &landmark : estimator.f_manager.KeyPointLandmarks[c])
       {
         auto host_tid = landmark.second.kf_id;
         auto host_id = estimator.time_frameid2_int_frameid.at(host_tid);
-
-        // 确保滑窗中two_newest 有观测值
         if (landmark.second.solve_flag ==
                 KeyPointLandmark::SolveFlag::SOLVE_SUCC &&
             host_id < WINDOW_SIZE - 2 &&
@@ -774,7 +751,8 @@ void pubKeyframe(const MCVOEstimator &estimator)
           auto target_tid =
               estimator.int_frameid2_time_frameid.at(WINDOW_SIZE - 2);
 
-          double depth = landmark.second.obs.at(host_tid).depth_measured;
+          // double depth = landmark.second.obs.at(host_tid).depth_measured;
+          double depth = 0;
           depth = depth == 0 ? landmark.second.estimated_depth : depth;
 
           {
@@ -787,6 +765,10 @@ void pubKeyframe(const MCVOEstimator &estimator)
             p.y = w_pts_i(1);
             p.z = w_pts_i(2);
             point_cloud.points.push_back(p);
+     
+            Vector3d target_pts_i = estimator.ric[c].inverse()*(estimator.Rs[i].inverse()*(w_pts_i - estimator.Ps[i]) - estimator.tic[c]);
+            Vector3d host_pts_i = estimator.ric[c].inverse()*(estimator.Rs[host_id].inverse()*(w_pts_i - estimator.Ps[host_id]) - estimator.tic[c]);
+            
 
             sensor_msgs::ChannelFloat32 p_2d;
             p_2d.values.push_back(landmark.second.obs.at(target_tid).point.x());
@@ -794,13 +776,16 @@ void pubKeyframe(const MCVOEstimator &estimator)
             p_2d.values.push_back(landmark.second.obs.at(target_tid).uv.x());
             p_2d.values.push_back(landmark.second.obs.at(target_tid).uv.y());
             p_2d.values.push_back(landmark.second.feature_id);
+            p_2d.values.push_back(c);     
             point_cloud.channels.push_back(p_2d);
+            
+            newcamera++;
           }
         }
+        
       }
 
-    //"keyframe_point"
-    // now have more points than origin
+    }
     pub_keyframe_point.publish(point_cloud);
   }
 }

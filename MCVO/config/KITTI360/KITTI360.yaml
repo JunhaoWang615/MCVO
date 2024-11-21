@@ -13,7 +13,7 @@ imu_topic: "/IMU_oxts"
 depth_topic: "/velodyne_points"
 laser_topic: "/velodyne_points"
 odom_topic: "/integrated_to_init"
-output_path: "/home/wang/datas/original-pose/multi-camera/KITTI-00-1-Super-pose"
+output_path: "/home/wang/Documents/MCVO/MCVO_data_test"
 
 lio_world_frame: "sensor_init"
 vins_world_frame: "vins_world"
@@ -27,8 +27,7 @@ scale_lidar_absolute_factor: 3
 
 align_camera_lidar_estimation: 0 # align camera and lidar estimation for visualization
 
-sensor_list: ['camera_00', 'camera_01', 'camera_02','camera_03']
-# sensor_list: ['camera_02', 'camera_03']
+sensor_list: ['camera_00', 'camera_02', 'camera_03']
 
 camera_00:
   sensor_type: 0
@@ -42,18 +41,20 @@ camera_00:
     data:  [0.0371783278,  -0.0986182135,  0.9944306009,
               0.9992675562, -0.0053553387, -0.0378902567,
               0.0090621821,  0.9951109327,  0.0983468786] 
+
   #Translation from camera frame to imu frame, imu^T_cam
   extrinsicTranslation_imu_camera: !!opencv-matrix
     rows: 3
     cols: 1
     dt: d
     data: [1.5752681039, 0.0043914093, -0.6500000000]
+    # data: [1.5752681039, 0.0043914093, -0.6500000000]
 
   #feature traker parameters
-  max_cnt: 180          # max feature number in feature tracking
+  max_cnt: 100    # max feature number in feature tracking
   min_dist: 20            # min distance between two features
   freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
-  F_threshold: 1.0        # ransac threshold (pixel)
+  F_threshold: 1.0       # ransac threshold (pixel)
   show_track: 1           # publish tracking image as topic
   equalize: 1             # if image is too dark or light, trun on equalize to find enough features
   fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
@@ -98,17 +99,19 @@ camera_01:
             0.9997374956, -0.0100836652, -0.0205732716,
             0.0121891942, 0.9944049345, 0.104929737]
 
+
   #Translation from camera frame to imu frame, imu^T_cam
   extrinsicTranslation_imu_camera: !!opencv-matrix
     rows: 3
     cols: 1
     dt: d
     data: [1.5977241400, 0.5981494900, -0.6488433108]
+
   #feature traker parameters
-  max_cnt: 180          # max feature number in feature tracking
+  max_cnt: 100    # max feature number in feature tracking
   min_dist: 20            # min distance between two features
   freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
-  F_threshold: 1.0        # ransac threshold (pixel)
+  F_threshold: 1.0       # ransac threshold (pixel)
   show_track: 1           # publish tracking image as topic
   equalize: 1             # if image is too dark or light, trun on equalize to find enough features
   fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
@@ -152,21 +155,20 @@ camera_02:
     data: [0.9995185086, 0.0041276589, -0.0307524527,
             -0.0307926666, 0.0100608424, -0.9994751579,
             -0.0038160970, 0.9999408692, 0.0101830998]
-  #Translation from camera frame to imu frame, imu^T_cam
   extrinsicTranslation_imu_camera: !!opencv-matrix
     rows: 3
     cols: 1
     dt: d
     data: [0.7264036936, -0.1499658517, -1.0686400091]
   #feature traker parameters
-  max_cnt: 180          # max feature number in feature tracking
+  max_cnt: 150    # max feature number in feature tracking
   min_dist: 20            # min distance between two features
   freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
-  F_threshold: 1.0        # ransac threshold (pixel)
+  F_threshold: 1.0       # ransac threshold (pixel)
   show_track: 1           # publish tracking image as topic
   equalize: 1             # if image is too dark or light, trun on equalize to find enough features
-  fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
-  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask.jpg"
+  fisheye: 1             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask_02.png"
   image_width: 1400
   image_height: 1400
   visualize: 1
@@ -181,10 +183,10 @@ camera_02:
     p1: 4.2223943394772046e-04
     p2: 4.2462134260997584e-04
   projection_parameters:
-    fx: 1.3363220825849971e+03
-    fy: 1.3357883350012958e+03
-    cx: 7.1694323510126321e+02
-    cy: 7.0576498308221585e+02
+    gamma1: 1.3363220825849971e+03
+    gamma2: 1.3357883350012958e+03
+    u0: 7.1694323510126321e+02
+    v0: 7.0576498308221585e+02
 
 camera_03:
   sensor_type: 0
@@ -205,14 +207,14 @@ camera_03:
     dt: d
     data: [0.7016842127,0.7463650950, -1.0751978255]
   #feature traker paprameters
-  max_cnt: 180          # max feature number in feature tracking
+  max_cnt: 150    # max feature number in feature tracking
   min_dist: 20            # min distance between two features
   freq: 16                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image
-  F_threshold: 1.0        # ransac threshold (pixel)
+  F_threshold: 1.0       # ransac threshold (pixel)
   show_track: 1           # publish tracking image as topic
   equalize: 1             # if image is too dark or light, trun on equalize to find enough features
-  fisheye: 0             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
-  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask.jpg"
+  fisheye: 1             # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+  fisheye_path: "/home/wang/catkin_ws/src/MCVO-main-new/MCVO/config/fisheye_mask_03.png"
   image_width: 1400
   image_height: 1400
   visualize: 1
@@ -227,10 +229,10 @@ camera_03:
     p1: 1.3477698472982495e-03
     p2: -7.0340482615055284e-04
   projection_parameters:
-    fx: 1.4854388981875156e+03
-    fy: 1.4849477411748708e+03
-    cx: 6.9888316784030962e+02
-    cy: 6.9814541887723055e+02
+    gamma1: 1.4854388981875156e+03
+    gamma2: 1.4849477411748708e+03
+    u0: 6.9888316784030962e+02
+    v0: 6.9814541887723055e+02
 
 
 
@@ -264,10 +266,10 @@ gyr_w: 2.0e-6       # gyroscope bias random work noise standard deviation.     #
 g_norm: 9.81007       # gravity magnitude
 
 #loop closure parameters
-loop_closure: 0                    # start loop closure
-fast_relocalization: 0             # useful in real-time and large project
+loop_closure: 1                    # start loop closure//是否关闭回环检测
+fast_relocalization: 1             # useful in real-time and large project
 load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
-pose_graph_save_path: "/home/wang/datas/original-pose/KITTI-03-Super-pose" # save and load path
+pose_graph_save_path: "/home/wang/Documents/MCVO/MCVO_data_test" # save and load path
 
 #unsynchronization parameters
 estimate_td: 0                      # online estimate time offset between camera and imu

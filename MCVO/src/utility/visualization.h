@@ -22,6 +22,8 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
+
 #include <std_msgs/Header.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>

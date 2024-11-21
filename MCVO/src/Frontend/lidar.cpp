@@ -121,85 +121,6 @@ void MCVOfrontend::assign_feature_depth(cv::Point2f &p, double &depth, std::shar
     // ROS_DEBUG("Depth: %f",depth);
 } // assign_feature_depth end
 
-/*
-Eigen::Vector2f
-MCVOfrontend::xyz_to_uv(pcl::PointXYZ &xyz)
-{
-    float fx_ = fx;
-    float fy_ = fy;
-    float cx_ = cx;
-    float cy_ = cy;
-    //转换到图像平面点
-    float x = fx_ * xyz.x + cx_ * xyz.z;
-    float y = fy_ * xyz.y + cy_ * xyz.z;
-    float z = xyz.z;
-
-    //转换到图像uv
-    Eigen::Vector2f uv(x / z, y / z);
-
-    //如果没有distortion就直接返回uv
-    if (!distortion_flag)
-    {
-        return uv;
-    }
-    else
-    {
-        // uv 去除图像畸变
-        float xx = xyz.x / xyz.z;
-        float yy = xyz.y / xyz.z;
-        float r2 = xx * xx + yy * yy;
-        float r4 = r2 * r2;
-        float r6 = r4 * r2;
-        float a1 = 2 * xx * yy;
-        float a2 = r2 + 2 * xx * xx;
-        float a3 = r2 + 2 * yy * yy;
-        float cdist =
-            1 + (float)distortion_img[0] * r2 + (float)distortion_img[1] * r4 + (float)distortion_img[4] * r6;
-        float xd = xx * cdist + (float)distortion_img[2] * a1 + (float)distortion_img[3] * a2;
-        float yd = yy * cdist + (float)distortion_img[2] * a3 + (float)distortion_img[3] * a1;
-        Eigen::Vector2f uv_undist(xd * (float)fx_ + (float)cx_, yd * (float)fy_ + (float)cy_);
-
-        return uv_undist;
-    }
-} // function xyz to_uv end
-
-Eigen::Vector2f
-MCVOfrontend::xyz_to_uv(const Eigen::Vector3f &xyz)
-{
-    float fx_ = fx;
-    float fy_ = fy;
-    float cx_ = cx;
-    float cy_ = cy;
-
-    float x = fx_ * xyz(0) + cx_ * xyz(2);
-    float y = fy_ * xyz(1) + cy_ * xyz(2);
-    float z = xyz(2);
-    Eigen::Vector2f uv(x / z, y / z);
-
-    if (!distortion_flag)
-    {
-        return uv;
-    }
-    else
-    {
-        float xx = xyz(0) / xyz(2);
-        float yy = xyz(1) / xyz(2);
-        float r2 = xx * xx + yy * yy;
-        float r4 = r2 * r2;
-        float r6 = r4 * r2;
-        float a1 = 2 * xx * yy;
-        float a2 = r2 + 2 * xx * xx;
-        float a3 = r2 + 2 * yy * yy;
-        float cdist =
-            1 + (float)distortion_img[0] * r2 + (float)distortion_img[1] * r4 + (float)distortion_img[4] * r6;
-        float xd = xx * cdist + (float)distortion_img[2] * a1 + (float)distortion_img[3] * a2;
-        float yd = yy * cdist + (float)distortion_img[2] * a3 + (float)distortion_img[3] * a1;
-        Eigen::Vector2f uv_undist(xd * (float)fx_ + (float)cx_, yd * (float)fy_ + (float)cy_);
-
-        return uv_undist;
-    }
-} // function xyz_to_uv end
-*/
 bool MCVOfrontend::is_in_image(const Eigen::Vector2d &uv, int boundary, float scale, std::shared_ptr<MCVOcamera> ptr)
 {
     int u = static_cast<int>(uv(0) * scale);
@@ -300,10 +221,6 @@ void MCVOfrontend::show_image_with_points(std::shared_ptr<MCVOcamera> ptr, size_
                 b = 0.0;
             }
 
-            //       std::cout << "color: " << r << ", " << g << ", " << b << std::endl;
-            //        iter->r = r;
-            //        iter->g = g;
-            //        iter->b = b;
             // TODO: 数据类型要一致
 #if 1
             cv::circle(img_with_points,
@@ -602,14 +519,7 @@ void MCVOfrontend::processLidar(const sensor_msgs::PointCloud2ConstPtr &laser_ms
         }
         return;
     }
-// for (int i = 0; i < trackerData.size(); i++)
-// {
-//     if (laservisual_alligned_imgs_[i].empty())
-//     {
-//         LOG(INFO) << "Empty laser aligned image of tracker "<<i;
-//         continue;
-//     }
-// ROS_DEBUG("lidar_callback");
+
 #if SHOW_LOG_DEBUG
     LOG(INFO) << "Process lidar";
 #endif

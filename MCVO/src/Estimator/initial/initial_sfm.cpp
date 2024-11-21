@@ -421,40 +421,6 @@ bool GlobalSFM::construct(int frame_num,
             continue;
         if ((int)sfm_f[base_cam][j].observation.size() >= 2)
         {
-            // Vector3d point0;
-            // Vector2d point1;
-            // int frame_0 = sfm_f[j].observation[0].first;
-            // if (sfm_f[j].observation_depth[0].second < 0.1 || sfm_f[j].observation_depth[0].second > 10) // max and min measurement
-            //     continue;
-            // point0 = Vector3d(sfm_f[j].observation[0].second.x() * sfm_f[j].observation_depth[0].second,
-            //                   sfm_f[j].observation[0].second.y() * sfm_f[j].observation_depth[0].second,
-            //                   sfm_f[j].observation_depth[0].second);
-            // int frame_1 = sfm_f[j].observation.back().first;
-            // point1 = sfm_f[j].observation.back().second;
-            // Vector3d point_3d;
-            // // triangulatePoint(Pose[frame_0], Pose[frame_1], point0, point1, point_3d);
-
-            // Matrix3d Pose0_R = Pose[frame_0].block<3, 3>(0, 0);
-            // Matrix3d Pose1_R = Pose[frame_1].block<3, 3>(0, 0);
-            // Vector3d Pose0_t = Pose[frame_0].block<3, 1>(0, 3);
-            // Vector3d Pose1_t = Pose[frame_1].block<3, 1>(0, 3);
-
-            // Vector2d residual;
-            // Vector3d point1_reprojected;
-            // // triangulatePoint(Pose0, Pose1, point0, point1, point_3d);
-            // point_3d = Pose0_R.transpose() * point0 - Pose0_R.transpose() * Pose0_t; // point in world;
-            // point1_reprojected = Pose1_R * point_3d + Pose1_t;
-
-            // residual = point1 - Vector2d(point1_reprojected.x() / point1_reprojected.z(),
-            //                              point1_reprojected.y() / point1_reprojected.z());
-
-            // if (residual.norm() < 1.0 / 460)
-            // { // reprojection error
-            //     sfm_f[j].state = true;
-            //     sfm_f[j].position[0] = point_3d(0);
-            //     sfm_f[j].position[1] = point_3d(1);
-            //     sfm_f[j].position[2] = point_3d(2);
-            // }
             Vector2d point0, point1;
             int frame_0 = sfm_f[base_cam][j].observation[0].first;
             point0 = sfm_f[base_cam][j].observation[0].second;
@@ -656,9 +622,6 @@ bool GlobalSFM::mulcam_construct(int frame_num,
     LOG(INFO) << "SfM for camera " << base_cam;
     feature_num[base_cam] = sfm_f[base_cam].size();
 
-    // cout << "set 0 and " << l << " as known " << endl;
-    //  have relative_r relative_t
-    //  intial two view
 
     // 假设第l帧为原点，根据当前帧到第l帧的relative_R，relative_T，得到当前帧位姿
     //  Set body pose as origin
@@ -1313,10 +1276,8 @@ bool GlobalSFM::weak_mulcam_construct(int frame_num,
     int min_l = (l_ < l) ? l_ : l;
     int max_l = (l_ > l) ? l_ : l;
 
-    // dR1 = q[base_cam][min_l].toRotationMatrix().transpose() * q[base_cam][max_l].toRotationMatrix();
     dR1 = (q[base_cam][min_l].inverse() * q[base_cam][max_l]).toRotationMatrix();
     dS1 = T[base_cam][max_l] - T[base_cam][min_l];
-    // dR2 = q[base_cam][max_l].toRotationMatrix().transpose() * q[base_cam][frame_num - 1].toRotationMatrix();
     dR2 = (q[base_cam][max_l].inverse() * q[base_cam][frame_num - 1]).toRotationMatrix();
     dS2 = T[base_cam][frame_num - 1] - T[base_cam][max_l];
 

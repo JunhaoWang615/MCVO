@@ -26,26 +26,6 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     ImageFrame(){};
-    // ImageFrame(const vins::FeatureTrackerResulst &_points,
-    //            double _t)
-    //     : points(_points), timestamp{_t}
-    // {
-    // }
-
-    // ImageFrame(const vins::FrontEndResult &input)
-    // {
-    //     this->points = input.feature;
-    //     this->cloud_ptr = input.cloud_ptr;
-    //     this->image = input.image;
-    //     this->Tw_imu_meas = input.Tw_imu_meas;
-    //     this->vel_imu_meas=input.vel_imu_meas;
-    //     this->Ba_meas=input.Ba_meas;
-    //     this->Bg_meas=input.Bg_meas;
-    //     this->reset_id=input.reset_id;
-    //     this->gravity_meas=input.gravity_meas;
-    //     this->laser_odom_vio_sync=input.laser_odom_vio_sync;
-    //     timestamp = input.timestamp;
-    // }
     ImageFrame(const MCVO::SyncCameraProcessingResults &input)
     {
         points.resize(NUM_OF_CAM);

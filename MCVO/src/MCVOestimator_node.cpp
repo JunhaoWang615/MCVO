@@ -37,6 +37,8 @@ queue<sensor_msgs::PointCloudConstPtr> feature_buf;
 
 queue<sensor_msgs::PointCloudConstPtr> relo_buf;
 
+queue<sensor_msgs::PointCloudConstPtr> scales_buf;
+
 // queue<vins::FrontEndResult::Ptr> fontend_output_queue;
 
 MapRingBuffer<nav_msgs::Odometry::ConstPtr> laserimu_odom_buf;
@@ -316,6 +318,15 @@ void relocalization_callback(const sensor_msgs::PointCloudConstPtr &points_msg)
     m_buf.unlock();
 }
 
+void scales_callback(const sensor_msgs::PointCloudConstPtr &points_msg)
+{
+    // printf("relocalization callback! \n");
+    m_buf.lock();
+    scales_buf.push(points_msg);
+    m_buf.unlock();
+}
+
+
 // thread: visual-inertial odometry
 void FreqControll()
 {
@@ -348,7 +359,6 @@ void process1()
 {
     while (true)
     {
-
         MCVO::FrontEndMeasurement measurements;
         std::unique_lock<std::mutex> lk(m_buf);
         con.wait(lk, [&]
@@ -367,55 +377,24 @@ void process1()
             // double dx = 0, dy = 0, dz = 0, rx = 0, ry = 0, rz = 0;
             double img_t = frontend_msg->sync_timestamp + estimator.td;
 
-            // for (auto &imu_msg : measurement.first)
-            // {
-            //     double t = imu_msg->header.stamp.toSec();
-
-            //     if (t <= img_t)
-            //     {
-            //         if (current_time < 0)
-            //             current_time = t;
-            //         double dt = t - current_time;
-            //         ROS_ASSERT(dt >= 0);
-            //         current_time = t;
-            //         dx = imu_msg->linear_acceleration.x;
-            //         dy = imu_msg->linear_acceleration.y;
-            //         dz = imu_msg->linear_acceleration.z;
-            //         rx = imu_msg->angular_velocity.x;
-            //         ry = imu_msg->angular_velocity.y;
-            //         rz = imu_msg->angular_velocity.z;
-            //         estimator.processIMU(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
-            //         // printf("imu: dt:%f a: %f %f %f w: %f %f %f\n",dt, dx, dy, dz, rx, ry, rz);
-            //     }
-            //     else
-            //     {
-            //         double dt_1 = img_t - current_time;
-            //         double dt_2 = t - img_t;
-            //         current_time = img_t;
-            //         ROS_ASSERT(dt_1 >= 0);
-            //         ROS_ASSERT(dt_2 >= 0);
-            //         ROS_ASSERT(dt_1 + dt_2 > 0);
-            //         double w1 = dt_2 / (dt_1 + dt_2);
-            //         double w2 = dt_1 / (dt_1 + dt_2);
-            //         dx = w1 * dx + w2 * imu_msg->linear_acceleration.x;
-            //         dy = w1 * dy + w2 * imu_msg->linear_acceleration.y;
-            //         dz = w1 * dz + w2 * imu_msg->linear_acceleration.z;
-            //         rx = w1 * rx + w2 * imu_msg->angular_velocity.x;
-            //         ry = w1 * ry + w2 * imu_msg->angular_velocity.y;
-            //         rz = w1 * rz + w2 * imu_msg->angular_velocity.z;
-            //         estimator.processIMU(dt_1, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
-            //         // printf("dimu: dt:%f a: %f %f %f w: %f %f %f\n",dt_1, dx, dy, dz, rx, ry, rz);
-            //     }
-            // }
-            // set relocalization frame
+           
             sensor_msgs::PointCloudConstPtr relo_msg = nullptr;
-
+            sensor_msgs::PointCloudConstPtr scales_msg = nullptr;
+            vector<int> old_point;
+            vector<int> cur_point;
             while (!relo_buf.empty())
             {
                 relo_msg = relo_buf.front();
                 relo_buf.pop();
             }
-            if (relo_msg != nullptr)
+
+            while (!scales_buf.empty())
+            {
+                scales_msg = scales_buf.front();
+                scales_buf.pop();
+            }
+
+            if (relo_msg != nullptr )
             {
                 Eigen::aligned_vector<Vector3d> match_points;
                 double frame_stamp = relo_msg->header.stamp.toSec();
@@ -427,17 +406,30 @@ void process1()
                     u_v_id.z() = point.z;
                     match_points.push_back(u_v_id);
                 }
+                for (unsigned int i = 0; i < (int)match_points.size(); i++)
+                {
+                    cur_point.push_back(relo_msg->channels[i + 1].values[0]);
+                    old_point.push_back(relo_msg->channels[i + 1].values[1]);
+                    // cout << "  " << relo_msg->channels[i + 1].values[0] << "and" << relo_msg->channels[i + 1].values[1];
+                }
+                cout << "" << endl;
                 Vector3d relo_t(relo_msg->channels[0].values[0], relo_msg->channels[0].values[1], relo_msg->channels[0].values[2]);
                 Quaterniond relo_q(relo_msg->channels[0].values[3],
                                    relo_msg->channels[0].values[4],
                                    relo_msg->channels[0].values[5],
                                    relo_msg->channels[0].values[6]);
                 Matrix3d relo_r = relo_q.toRotationMatrix();
+                Vector3d loop_t(relo_msg->channels[0].values[8], relo_msg->channels[0].values[9], relo_msg->channels[0].values[10]);
+                Quaterniond loop_q(relo_msg->channels[0].values[11],
+                                   relo_msg->channels[0].values[12],
+                                   relo_msg->channels[0].values[13],
+                                   relo_msg->channels[0].values[14]);
+                Matrix3d loop_r = loop_q.toRotationMatrix();
                 int frame_index;
                 frame_index = relo_msg->channels[0].values[7];
-                int c_cur = relo_msg->channels[0].values[8];
-                int c_old = relo_msg->channels[0].values[9];
-                estimator.setReloFrame(frame_stamp, frame_index, match_points, relo_t, relo_r, c_cur, c_old);
+ 
+
+                estimator.setReloFrame(frame_stamp, frame_index, match_points, relo_t, relo_r, cur_point, old_point, loop_t, loop_r);
             }
 
 
@@ -452,7 +444,10 @@ void process1()
             LOG(INFO) << "Result size:" << frontend_msg->results.size();
 #endif
 
-            estimator.processImageAndLidar(*frontend_msg);
+
+                    estimator.processImageAndLidar(*frontend_msg);
+
+
 
             double whole_t = t_s.toc();
 
@@ -467,8 +462,8 @@ void process1()
             pubCameraPose(estimator, header);
             pubPointCloud(estimator, header);
             pubKeyframe(estimator);
-            // if (relo_msg != nullptr)
-            //     pubRelocalization(estimator);
+            if (relo_msg != nullptr)
+                pubRelocalization(estimator);
             // ROS_ERROR("end: %f, at %f", img_msg->header.stamp.toSec(), ros::Time::now().toSec());
         }
         m_estimator.unlock();
@@ -532,10 +527,10 @@ int main(int argc, char **argv)
     LOG(INFO) << "Register publishers";
     registerPub(n);
     LOG(INFO) << "Finish initialization";
-    // ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
 
     ros::Subscriber sub_restart = n.subscribe("/feature_tracker/restart", 2000, restart_callback);
-
+    ros::Subscriber sub_relo_points = n.subscribe("/pose_graph/match_points", 2000, relocalization_callback);
+    ros::Subscriber sub_relo_scales = n.subscribe("/pose_graph/scales", 2000, scales_callback);
     std::thread measurement_process{process1};
     std::thread freq_process{FreqControll};
 

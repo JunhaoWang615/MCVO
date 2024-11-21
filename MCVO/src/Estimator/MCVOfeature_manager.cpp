@@ -203,6 +203,7 @@ FeatureManager::getCorresponding(int frame_count_l, int frame_count_r)
                 corres[c].push_back(make_pair(a, b));
             }
         }
+
     }
     return corres;
 }
@@ -318,7 +319,7 @@ void FeatureManager::removeFailures()
 
 // https://blog.csdn.net/kokerf/article/details/72844455
 void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[], int base_cam)
-{
+{    
     for (int c = 0; c < NUM_OF_CAM; c++)
     {
 #if SINGLE_CAM_DEBUG
@@ -378,7 +379,7 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[], 
             // it_per_id->estimated_depth = svd_V[2] / svd_V[3];
 
             landmark.second.estimated_depth = svd_method;
-            // it_per_id->estimated_depth = INIT_DEPTH;
+            // it_per_id->estimated_depth = INIT_DEPTH; 
 
             // 0 initial; 1 by depth image; 2 by triangulate
             landmark.second.estimate_flag = KeyPointLandmark::EstimateFlag::TRIANGULATE;
@@ -425,19 +426,12 @@ void FeatureManager::triangulateWithDepth(Vector3d Ps[], Vector3d tic[], Matrix3
             //  LOG(INFO)<<landmark.second.obs.size();
             for (auto &it_per_frame : landmark.second.obs)
             {
-                // LOG(INFO)<<it_per_frame.first<<","<<it_per_frame.second.point;
                 auto target_tid = it_per_frame.first;
-                // LOG(INFO)<<"target_tid:"<<target_tid<<", times size:"<<time_frameid2_int_frameid_->size();
-                // for (auto i : *time_frameid2_int_frameid_)
-                // {
-                //     LOG(INFO)<<i.first<<","<<i.second;
-                // }
+
                 auto target_id = time_frameid2_int_frameid_->at(target_tid);
                 // LOG(INFO)<<"target_id:"<<target_id;
                 Eigen::Vector3d t0 = Ps[target_id] + Rs[target_id] * tic[c];
                 Eigen::Matrix3d R0 = Rs[target_id] * ric[c];
-                // double depth_threshold = 3; //for handheld and wheeled application. Since d435i <3 is quiet acc
-                // double depth_threshold = 10; //for tracked application, since IMU quite noisy in this scene
 
                 double depth_threshold = 100; // for kitti dataset
                 // TODO:修改depth的阈值

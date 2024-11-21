@@ -457,107 +457,6 @@ bool MultiCameraAlignment(Eigen::aligned_map<double, ImageFrame> &all_image_fram
     return true;
 }
 
-// For multiple cameras
-// bool MultiCameraAlignment(Eigen::aligned_map<double, ImageFrame> &all_image_frame, int l, VectorXd &x, vector<bool> &state)
-// {
-//     LOG(INFO) << "Into multi camera alignment 2";
-//     int all_frame_count = all_image_frame.size();
-//     // int n_state = (all_frame_count - 1) * 3;
-//     int camera_count = 0;
-//     vector<int> camera_block_index;
-//     for (auto i : state)
-//     {
-//         if (i)
-//         {
-//             camera_block_index.push_back(camera_count);
-//         }
-//         camera_count++;
-//     }
-//     int valid_count = (int)camera_block_index.size();
-
-//     LOG(INFO) << valid_count;
-//     if (valid_count < 2)
-//     {
-//         LOG(INFO) << "Less than 2 cameras are valid for alignment!";
-//         return false;
-//     }
-//     MatrixXd A{valid_count, valid_count};
-
-//     A.setZero();
-
-//     VectorXd b{valid_count, 1};
-//     b.setZero();
-//     Eigen::aligned_map<double, ImageFrame>::iterator frame_i;
-//     int i = 0;
-//     for (frame_i = all_image_frame.begin(); frame_i != all_image_frame.end(); frame_i++, i++)
-//     {
-//         if (i == l)
-//             continue;
-//         // construct A_t
-//         MatrixXd A_t(valid_count, valid_count);
-//         MatrixXd b_t(valid_count, 1);
-//         A_t.setZero();
-//         b_t.setZero();
-
-//         for (int c1 = 0; c1 < valid_count; c1++)
-//         {
-//             int base_camera = camera_block_index[c1];
-
-//             for (int c2 = c1 + 1; c2 < valid_count; c2++)
-//             {
-//                 int ref_camera = camera_block_index[c2];
-//                 // constructing F
-//                 MatrixXd F(3, valid_count);
-//                 F.block<3, 1>(0, c1) = frame_i->second.Twi[base_camera].pos;
-//                 F.block<3, 1>(0, c2) = -frame_i->second.Twi[ref_camera].pos;
-//                 LOG(INFO) <<"F: \n"<<F;
-//                 A_t += F.transpose() * F;
-//                 LOG(INFO) <<"A_t: \n"<<A_t;
-//                 Vector3d theta;
-//                 theta.setZero();
-//                 theta = frame_i->second.Twi[ref_camera].rotationMatrix() * RIC[ref_camera].transpose() * TIC[ref_camera] -
-//                         frame_i->second.Twi[base_camera].rotationMatrix() * RIC[base_camera].transpose() * TIC[base_camera];
-//                 LOG(INFO) <<"theta: \n"<<theta;
-//                 b_t += F.transpose() * theta;
-//                 LOG(INFO) <<"b_t: \n"<<b_t;
-//             }
-//         }
-//         A += A_t;
-//         b += b_t;
-//     }
-//     LOG(INFO) <<"Slove";
-//     LOG(INFO) <<"A:\n"<<A;
-//     LOG(INFO) <<"b:\n" <<b;
-//     // Eigenvalue checker
-//     A = A;
-//     b = b;
-//     EigenSolver<MatrixXd> s(A);
-//     auto eivals = s.eigenvalues();
-//     LOG(INFO) << "The eigen value of A is: " << eivals;
-//     double det = 1;
-//     int rows = eivals.rows();
-//     for (int r = 0; r < rows; r++)
-//     {
-//         LOG(INFO) << "Eigen value " << r << " : " << eivals(r);
-//         det *= eivals(r).real();
-//     }
-//     if (fabs(det) > 1e-9)
-//     {
-//         x = A.inverse() * b;
-//         LOG(INFO) << "Scales: \n"
-//                   << x;
-//         for (int c = 0; c < valid_count; c++)
-//         {
-//             if (x(c) < 0)
-//                 return false;
-//         }
-//         return true;
-//     }
-//     else
-//     {
-//         return false;
-//     }
-// }
 
 // For multiple cameras
 bool MultiCameraAlignment(Eigen::aligned_map<double, ImageFrame> &all_image_frame, int l, VectorXd &x, vector<bool> &state)
@@ -599,7 +498,6 @@ bool MultiCameraAlignment(Eigen::aligned_map<double, ImageFrame> &all_image_fram
         scales[i][0] = 10.0;
         problem.AddParameterBlock(scales[i], 1);
     }
-
     Eigen::aligned_map<double, ImageFrame>::iterator frame_i;
     int i = 0;
     for (frame_i = all_image_frame.begin(); frame_i != all_image_frame.end(); frame_i++, i++)
@@ -620,11 +518,11 @@ bool MultiCameraAlignment(Eigen::aligned_map<double, ImageFrame> &all_image_fram
                                                          r_j, frame_i->second.Twi[ref_camera].pos,
                                                          RIC[base_camera], TIC[base_camera],
                                                          RIC[ref_camera], TIC[ref_camera]);
-
                 problem.AddResidualBlock(f, nullptr, scales[base_camera], scales[ref_camera]);
             }
         }
     }
+
     LOG(INFO) << "Solve";
 
     ceres::Solver::Options options;
@@ -659,6 +557,6 @@ bool MultiCameraAlignment(Eigen::aligned_map<double, ImageFrame> &all_image_fram
     std::cout << ss[0] << std::endl;
 
     x = ss;
-        std::cout << "11111111111111111111111111111" << std::endl;
+
     return true;
 }

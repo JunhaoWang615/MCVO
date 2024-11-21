@@ -45,7 +45,7 @@ namespace MCVO
 
     void setMask();
 
-    void addPoints();
+    void addPoints(int cols, int rows);
 
     bool updateID(unsigned int i);
 
@@ -75,6 +75,17 @@ namespace MCVO
     cv::Mat prev_desc, cur_desc, forw_desc;
     vector<cv::Point2f> prev_un_pts, cur_un_pts;
     vector<cv::Point2f> pts_velocity;
+
+    struct Node
+    {
+        pair<cv::Point2f, cv::Point2f> Size;
+        vector<int> Point_Lists;
+    };
+
+    vector<Node> node_List;
+    vector<int> List;
+    vector<vector<int>> listid_List;
+    Node node;
 
     map<int, cv::Point2f> cur_un_pts_map;
     map<int, cv::Point2f> prev_un_pts_map;

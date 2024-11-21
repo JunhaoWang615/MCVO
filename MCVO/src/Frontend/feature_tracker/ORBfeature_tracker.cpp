@@ -148,18 +148,60 @@ void ORBFeatureTracker::setMask()
     forw_desc = tmp_desc;
 }
 
-void ORBFeatureTracker::addPoints()
+// void ORBFeatureTracker::addPoints()
+// {
+//     // cout << "add pts" << endl;
+//     // cout << "forw_desc:" << forw_desc.size() << endl;
+//     int count = 0;
+//     for (auto &p : n_pts)
+//     {
+//         forw_pts.push_back(p);
+//         ids.push_back(-1);
+//         track_cnt.push_back(1);
+//         // cv::Mat row = n_desc(cv::Range(count, count + 1), cv::Range(0, n_desc.cols));
+//         cv::Mat row = n_desc.row(count);
+//         count++;
+//         if (forw_desc.rows != 0)
+//         {
+//             cv::vconcat(forw_desc, row, forw_desc);
+//         }
+//         else
+//         {
+//             forw_desc = row;
+//         }
+//     }
+//     // cout << "finish adding" << endl;
+//     // cout << "forw_desc:" << forw_desc.size() << endl;
+// }
+void  ORBFeatureTracker::addPoints(int weight, int height)
 {
-    // cout << "add pts" << endl;
-    // cout << "forw_desc:" << forw_desc.size() << endl;
+
+
+    // for (auto &p : n_pts)
+    // {
+    //     forw_pts.push_back(p);
+    //     ids.push_back(-1);
+    //     track_cnt.push_back(1);
+    // }
+    bool paixu = false;
+    int num = 0;
+    int width = weight;   
+    int track_num =  forw_pts.size();
+    int tracked_nodes = 0;
+    vector<uchar> status_quad;
+
     int count = 0;
+
+
     for (auto &p : n_pts)
     {
         forw_pts.push_back(p);
         ids.push_back(-1);
         track_cnt.push_back(1);
         // cv::Mat row = n_desc(cv::Range(count, count + 1), cv::Range(0, n_desc.cols));
+
         cv::Mat row = n_desc.row(count);
+
         count++;
         if (forw_desc.rows != 0)
         {
@@ -169,11 +211,141 @@ void ORBFeatureTracker::addPoints()
         {
             forw_desc = row;
         }
-    }
-    // cout << "finish adding" << endl;
-    // cout << "forw_desc:" << forw_desc.size() << endl;
-}
 
+    }
+
+    List.clear();
+    node.Size = make_pair(cv::Point2f(0, 0), cv::Point2f(weight, height));
+
+    for(int i = 0; i < forw_pts.size(); i++)
+        List.push_back(i);
+    node.Point_Lists = List;
+    node_List.push_back(node);
+    List.clear();
+    for(int i = 0; i < 4; i++)
+    {
+        listid_List.push_back(List);
+    }
+
+// cout <<cam->name << "  forw_pts.size()" << forw_pts.size() << endl;
+
+    while((node_List.size() < cam->MAX_CNT - track_num + tracked_nodes)&&(node_List.size() < forw_pts.size()))
+    {
+
+        if(node_List[num].Point_Lists.size()>1)
+        {
+            cv::Point2f p1 = node_List[num].Size.first;
+            cv::Point2f p2 = node_List[num].Size.second;    
+            int list_num = 0;
+            bool change_ = false;
+            for(auto &i : node_List[num].Point_Lists)
+            {
+                if(forw_pts[i].pt.x > (p1.x + p2.x)/2)
+                {
+                    if(forw_pts[i].pt.y > (p1.y + p2.y)/2)
+                        list_num = 3;
+                    else
+                        list_num = 1;
+                }
+                else
+                {
+                    if(forw_pts[i].pt.y > (p1.y + p2.y)/2)
+                        list_num = 2;
+
+                    else
+                        list_num = 0;
+                }
+                listid_List[list_num].push_back(i);
+                if (i < track_num&& listid_List[list_num].size() == 1)
+                {
+                    tracked_nodes++;
+                    change_ = true;
+                }
+            } 
+
+            for(int i = 0; i < 4; i++)
+            {
+                node.Size = make_pair(cv::Point2f((i%2)*(p2.x - p1.x)/2 + p1.x, (i/2)*(p2.y - p1.y)/2 + p1.y), cv::Point2f((i%2)*(p2.x - p1.x)/2 + (p2.x + p1.x)/2, (i/2)*(p2.y - p1.y)/2 + (p2.y + p1.y)/2));
+                if(width > (p2.x - p1.x)/2)
+                {
+                    width = (p2.x - p1.x)/2;
+                    paixu = true;
+                }
+                node.Point_Lists = listid_List[i];
+                if(listid_List[i].size() > 0)
+                {
+                node_List.push_back(node);
+                }
+                //四个区域特征点分开作一个List的vector
+                //对同等大小的区域按特征点数量进行排序
+                listid_List[i].clear();
+            }
+            if(change_ == true)
+                tracked_nodes--;
+            node_List.erase(node_List.begin() + num);
+            if(paixu)
+            {
+                sort(node_List.begin(), node_List.end(), [](const Node &a, const Node &b)
+                    { return a.Point_Lists.size() > b.Point_Lists.size(); });
+                sort(node_List.begin(), node_List.end(), [](const Node &a, const Node &b)
+                    { return a.Size.second.x - a.Size.first.x > b.Size.second.x - b.Size.first.x; });
+                    paixu = false;
+                    num = 0;
+            }
+        }
+        else
+            num++;
+    
+    }
+    for(int i = 0; i < forw_pts.size(); i++)
+        status_quad.push_back(0);
+
+    for(int node_num = 0; (node_num < cam->MAX_CNT - track_num + tracked_nodes)&&(node_num < forw_pts.size()); node_num++)
+    {
+        int point = 0;
+        bool in_track = false;
+        for(int i = 0; i < node_List[node_num].Point_Lists.size(); i++)
+        {   
+            if(node_List[node_num].Point_Lists[i] < track_num)
+            {
+                status_quad[node_List[node_num].Point_Lists[i]] = 1;
+                in_track = true;
+            }
+            if((forw_pts[node_List[node_num].Point_Lists[i]].response > forw_pts[node_List[node_num].Point_Lists[point]].response) && (!in_track))
+                point = i;
+        }
+        if(!in_track)
+            status_quad[node_List[node_num].Point_Lists[point]] = 1;
+    }
+    cv::Mat forw_desc_pre;
+    for (int i = 0; i < status_quad.size(); i++)
+    {
+        // cv::Mat row = n_desc(cv::Range(count, count + 1), cv::Range(0, n_desc.cols));
+        if(status_quad[i] == 1)
+        {
+            cv::Mat row = forw_desc.row(i);
+
+            if (forw_desc_pre.rows != 0)
+            {
+                cv::vconcat(forw_desc_pre, row, forw_desc_pre);
+            }
+            else
+            {
+                forw_desc_pre = row;
+            }
+        }
+    }
+    reduceVector(forw_pts, status_quad);
+    forw_desc.release();
+    forw_desc = forw_desc_pre.clone();
+    forw_desc_pre.release();
+    // reduceMat(forw_desc, status_quad);
+    TrackerBase::reduceVector(ids, status_quad);
+    TrackerBase::reduceVector(track_cnt, status_quad);
+    //  cout << cam->name << "  last forw_pts.size()" << forw_pts.size() << endl;
+    status_quad.clear();
+    node_List.clear();
+}
 void ORBFeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 {
     cv::Mat img;
@@ -204,7 +376,7 @@ void ORBFeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 
     if (cur_pts.size() > 0)
     {
-        cout << "111111111111111111111 cur_pts " << cur_pts.size() <<endl; 
+ 
         TicToc t_o;
         vector<uchar> status;
         if (!useOpticalFlow)
@@ -241,9 +413,9 @@ void ORBFeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 #endif
             // LOG(INFO) << "Matching";
             cur_desc.convertTo(cur_desc, 5);
-            cout << "111111111111111111111 cur_desc " << cur_desc.size() <<endl; 
+
             tmp_desc.convertTo(tmp_desc, 5);
-            cout << "111111111111111111111 tmp_desc " << tmp_desc.size() <<endl; 
+
             matcher->knnMatch(cur_desc, tmp_desc, knn_matches, 2, fisheye_mask);
             // std::vector<cv::DMatch> good_matches;
             float ratio_thresh = 0.95f;
@@ -281,7 +453,7 @@ void ORBFeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
                     forw_desc = row;
                 }
             }
-            cout << "111111111111111111111 forw_desc " << forw_desc.size() <<endl; 
+
             cout << "matches: " << count << endl;
             // drawMatches( img1, keypoints1, img2, keypoints2, good_matches, img_matches, Scalar::all(-1),
             //      Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
@@ -344,27 +516,27 @@ void ORBFeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 
     if (cam->PUB_THIS_FRAME)
     {
-        cout << "before rejectWithF cur_pts " << cur_pts.size() <<endl; 
         rejectWithF();
-        cout << "after rejectWithF cur_pts " << cur_pts.size() <<endl; 
         ROS_DEBUG("set mask begins");
         TicToc t_m;
         setMask();
+
+        double track_times = 0;
         int array[20] = {0};
         for(int i = 0; i < int(track_cnt.size()); i++)
         {
             if (track_cnt[i]<20)
             array[track_cnt[i]]++;
+            track_times += track_cnt[i];
         }
-        for(int i = 0; i < 20; i++)
-        {
-            cout << "track times" << i  << " : "  << array[i] << endl;
-        }
+
+
         ROS_DEBUG("set mask costs %fms", t_m.toc());
 
         ROS_DEBUG("detect feature begins");
         TicToc t_t;
-        int n_max_cnt = cam->MAX_CNT - static_cast<int>(forw_pts.size());
+        int n_max_cnt = 4*cam->MAX_CNT - static_cast<int>(forw_pts.size());
+
         if (n_max_cnt > 0)
         {
             if (mask.empty())
@@ -406,7 +578,7 @@ void ORBFeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 
         ROS_DEBUG("add feature begins");
         TicToc t_a;
-        addPoints();
+        addPoints(forw_img.cols, forw_img.rows);
         ROS_DEBUG("selectFeature costs: %fms", t_a.toc());
     }
     prev_img = cur_img;

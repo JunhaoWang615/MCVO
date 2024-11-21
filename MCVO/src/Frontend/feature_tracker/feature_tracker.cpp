@@ -39,7 +39,7 @@ void FeatureTracker::setMask()
     if (cam->FISHEYE)
         mask = fisheye_mask.clone();
     else
-        mask = cv::Mat(cam->ROW, cam->COL, CV_8UC1, cv::Scalar(255));
+        mask = cv::Mat( cam->ROW, cam->COL, CV_8UC1, cv::Scalar(255));
 
     // prefer to keep features that are tracked for long time
     vector<pair<int, pair<cv::Point2f, int>>> cnt_pts_id;
@@ -83,6 +83,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     cv::Mat img;
     TicToc t_r;
     cur_time = _cur_time;
+
     // too dark or too bright: histogram
     if (cam->EQUALIZE)
     {
@@ -115,6 +116,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
         vector<float> err;
         cv::calcOpticalFlowPyrLK(cur_img, forw_img, cur_pts, forw_pts, status, err, cv::Size(21, 21), 3);
         // LOG(INFO)<<"Optical Flow";
+
         for (int i = 0; i < int(forw_pts.size()); i++)
             if (status[i] && !inBorder(forw_pts[i]))
                 status[i] = 0;
@@ -124,7 +126,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
         reduceVector(ids, status);
         reduceVector(cur_un_pts, status);
         reduceVector(track_cnt, status);
-
+ 
         ROS_DEBUG("temporal optical flow costs: %fms", t_o.toc());
     }
 
@@ -135,6 +137,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     {
         //对prev_pts和forw_pts做ransac剔除outlier.
         rejectWithF();
+
         ROS_DEBUG("set mask begins");
         TicToc t_m;
         setMask();
@@ -150,7 +153,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
             if (mask.type() != CV_8UC1)
                 cout << "mask type wrong " << endl;
             if (mask.size() != forw_img.size())
-                cout << "wrong size " << endl;
+                cout << "wrong size " << mask.size()  << "dddddd " << forw_img.size() << endl;
             cv::goodFeaturesToTrack(forw_img, n_pts, cam->MAX_CNT - forw_pts.size(), 0.01, cam->MIN_DIST, mask);
             // LOG(INFO)<<"Good feature to track";
         }
@@ -172,6 +175,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     cur_pts = forw_pts;
     undistortedPoints();
     prev_time = cur_time;
+
 }
 
 void FeatureTracker::rejectWithF()
