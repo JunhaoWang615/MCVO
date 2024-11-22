@@ -72,7 +72,7 @@ Clone the repository :
     cd ~/catkin_ws/src
     git clone https://github.com/JunhaoWang615/MCVO.git
 ```
-Put [model](https://drive.google.com/drive/folders/1DEoLYAlBCSJyuEjIHc0Oc6mCKOju_G_r?usp=drive_link) and [initial_image](https://drive.google.com/drive/folders/1DEoLYAlBCSJyuEjIHc0Oc6mCKOju_G_r?usp=drive_link) in src/MCVO/MCVO/config
+Put [model](https://drive.google.com/drive/folders/1ahtFbkz2CLiPJWnmo5g6EV2AOELY5Ug2?usp=drive_link) and [initial_image](https://drive.google.com/drive/folders/1DEoLYAlBCSJyuEjIHc0Oc6mCKOju_G_r?usp=drive_link) in src/MCVO/MCVO/config
 
 Put [brief_k10L6.bin](https://drive.google.com/file/d/1lPjAWAf8BFSGq-OLshMiUR9wWNKH0qam/view?usp=drive_link) in src/MCVO/support_files
 
