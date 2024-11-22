@@ -67,10 +67,17 @@ Or
 ```
 
 ## 2. Build MCVO on ROS
-Clone the repository and catkin_make:
+Clone the repository :
 ```
     cd ~/catkin_ws/src
     git clone https://github.com/JunhaoWang615/MCVO.git
+```
+Put [model](https://drive.google.com/drive/folders/1DEoLYAlBCSJyuEjIHc0Oc6mCKOju_G_r?usp=drive_link) and [initial_image](https://drive.google.com/drive/folders/1DEoLYAlBCSJyuEjIHc0Oc6mCKOju_G_r?usp=drive_link) in src/MCVO/MCVO/config
+
+Put [brief_k10L6.bin](https://drive.google.com/file/d/1lPjAWAf8BFSGq-OLshMiUR9wWNKH0qam/view?usp=drive_link) in src/MCVO/support_files
+
+catkin_make
+```
     cd ../
     catkin_make
     source ~/catkin_ws/devel/setup.bash
@@ -79,7 +86,7 @@ Clone the repository and catkin_make:
 ## 3. Visual Odometry and Loop Closure on Public datasets
 Download [KITTI360 Dataset](https://www.cvlibs.net/datasets/kitti-360). The dataset has a total of 4 cameras, including two forward-looking cameras and one fisheye camera on the left and right. The system also works with [MultiCamSLAM dataset](https://github.com/neufieldrobotics/MultiCamSLAM) ([MultiCamData dataset](https://drive.google.com/drive/folders/151_ifKEE8WYHAeZ9hGcC69iotIpevBf8?usp=sharing)). We take KITTI360 sequence00 0-2277 frames as the example.
 
-3.1 (Optional) Select the feature extraction algorithm and the cameras you wish to run in src/MCVO-main-new/MCVO/config/KITTI360/KITTI360.yaml. You can also modify KITTI360.yaml to another yaml file in src/MCVO-main-new/MCVO/launch/KITTI360.launch to fit your dataset
+3.1 (Optional) Select the feature extraction algorithm and the cameras you wish to run in src/MCVO/MCVO/config/KITTI360/KITTI360.yaml. You can also modify KITTI360.yaml to another yaml file in src/MCVO/MCVO/launch/KITTI360.launch to fit your dataset
 
 
 3.2 Open three terminals, launch the mcvo_estimator , rviz and play the bag file respectively. Take KITTI360 sequence00 0-2277 frames for example
