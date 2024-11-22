@@ -92,7 +92,7 @@ Download [KITTI360 Dataset](https://www.cvlibs.net/datasets/kitti-360). The data
 3.2 Open three terminals, launch the mcvo_estimator , rviz and play the bag file respectively. Take KITTI360 sequence00 0-2277 frames for example
 ```
     roslaunch mcvo KITTI360.launch 
-    rviz -d src/MCVO-main-new/MCVO/launch/KITTI360.rviz
+    rviz -d src/MCVO/MCVO/launch/KITTI360.rviz
     rosbag play YOUR_PATH_TO_DATASET/KITTI360_00_1.bag
 ```
 
