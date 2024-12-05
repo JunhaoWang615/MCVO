@@ -77,14 +77,7 @@ camera_00:
     fy: 552.554261
     cx: 682.049453
     cy: 238.769549
-    # k1: -0.344441   
-    # k2: 0.141678
-    # p1: 0.000414
-    # p2: -0.000222
-# fx: 788.629315
-# fy: 786.382230
-# cx: 687.158398
-# cy: 317.752196
+
 
 camera_01:
   sensor_type: 0
@@ -134,14 +127,7 @@ camera_01:
     fy: 552.554261
     cx: 682.049453
     cy: 238.769549
-    # k1: -0.353195
-    # k2: 0.161996
-    # p1: 0.000383
-    # p2: -0.000242
-    # fx: 785.134093
-    # fy: 782.346289
-    # cx: 686.437073
-    # cy: 321.352788
+
 
 camera_02:
   sensor_type: 0
@@ -255,18 +241,13 @@ gyr_n: 0.004         # gyroscope measurement noise standard deviation.     #0.05
 acc_w: 0.00004         # accelerometer bias random work noise standard deviation.  #0.02
 gyr_w: 2.0e-6       # gyroscope bias random work noise standard deviation.     #4.0e-5
 
-#for tracked applications
-#acc_n: 0.5          # accelerometer measurement noise standard deviation. #0.2
-#gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05
-#acc_w: 0.001         # accelerometer bias random work noise standard deviation.  #0.02
-#gyr_w: 2.0e-5       # gyroscope bias random work noise standard deviation.     #4.0e-5
 
 
 
 g_norm: 9.81007       # gravity magnitude
 
 #loop closure parameters
-loop_closure: 1                    # start loop closure//是否关闭回环检测
+loop_closure: 1                    # start loop closure
 fast_relocalization: 1             # useful in real-time and large project
 load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
 pose_graph_save_path: "/home/wang/Documents/MCVO/MCVO_data_test" # save and load path
