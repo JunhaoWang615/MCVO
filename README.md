@@ -84,7 +84,7 @@ catkin_make
 ```
 
 ## 3. Visual Odometry and Loop Closure on Public datasets
-Download [KITTI360 Dataset](https://www.cvlibs.net/datasets/kitti-360). The dataset has a total of 4 cameras, including two forward-looking cameras and one fisheye camera on the left and right. The system also works with [MultiCamData dataset](https://drive.google.com/drive/folders/151_ifKEE8WYHAeZ9hGcC69iotIpevBf8?usp=sharing)([MultiCamSLAM](https://github.com/neufieldrobotics/MultiCamSLAM)). We take KITTI360 sequence00 0-2277 frames as the example.
+Download [KITTI360 Dataset](https://www.cvlibs.net/datasets/kitti-360). and then convert it to .bag file. The dataset has a total of 4 cameras, including two forward-looking cameras and one fisheye camera on the left and right. The system also works with [MultiCamData dataset](https://drive.google.com/drive/folders/151_ifKEE8WYHAeZ9hGcC69iotIpevBf8?usp=sharing)([MultiCamSLAM](https://github.com/neufieldrobotics/MultiCamSLAM)). We take KITTI360 sequence00 0-2277 frames as the example.
 
 3.1 (Optional) Select the feature extraction algorithm and the cameras you wish to run in src/MCVO/MCVO/config/KITTI360/KITTI360.yaml. You can also modify KITTI360.yaml to another yaml file in src/MCVO/MCVO/launch/KITTI360.launch to fit your dataset
 
