@@ -8,15 +8,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-set(Torch_DIR ~/libtorch/share/cmake/Torch)  #你解压的libtorch的绝对路径
+# absolute path for libtorch
+set(Torch_DIR /opt/libtorch/share/cmake/Torch)
 
-
-
-find_package(Torch REQUIRED)
-find_package(OpenCV 4.5 REQUIRED)
-
-add_definitions(-DENABLE_GPU=1)
-
+# ROS/catkin must be found before LibTorch; Torch's CMake can overwrite CMAKE_PREFIX_PATH.
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -27,6 +22,15 @@ find_package(catkin REQUIRED COMPONENTS
   camera_model
   )
 find_package(roslib REQUIRED)
+
+find_package(OpenCV 4.5 REQUIRED)
+
+set(_saved_cmake_prefix_path "${CMAKE_PREFIX_PATH}")
+find_package(Torch REQUIRED)
+set(CMAKE_PREFIX_PATH "${_saved_cmake_prefix_path}")
+
+add_definitions(-DENABLE_GPU=1)
+
 find_package(Gflags)
 # set(GLOG_LIBRARY "/usr/local/lib/libglog.so")
 # set(GLOG_INCLUDE_DIR "/usr/local/include")
@@ -54,6 +58,7 @@ find_package(vpi 2.0 REQUIRED)
 #find_package( Sophus REQUIRED )
 #include_directories( ${Sophus_INCLUDE_DIRS} )
 include_directories(thirdparty/Sophus)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../camera_model/include)
 include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}

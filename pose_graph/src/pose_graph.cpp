@@ -441,7 +441,7 @@ void PoseGraph::optimize4DoF()
             ceres::ScaledLoss* scaled_loss;
             scaled_loss = new ceres::ScaledLoss(loss_function, 5, ceres::TAKE_OWNERSHIP);
             ceres::LocalParameterization* angle_local_parameterization =
-                AngleLocalParameterization::Create();
+                new AngleLocalParameterization();
 
             list<KeyFrame*>::iterator it;
             int i = 0;
