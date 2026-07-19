@@ -396,27 +396,50 @@ void process()
                 pose_buf.pop();
                 while (!pose_buf.empty())
                     pose_buf.pop();
-                while (image_buf_vector[0].front()->header.stamp.toSec() < pose_msg->header.stamp.toSec())
+                // The camera streams may not be in perfect lockstep (a camera can drop a frame). 
+                // Guard every front()/pop() against empty queues.
+                // If any queue runs dry, skip this pose instead of segfaulting.
+                bool cams_ok = true;
+                while (!image_buf_vector[0].empty() &&
+                       image_buf_vector[0].front()->header.stamp.toSec() < pose_msg->header.stamp.toSec())
                     for(int i = 0; i < (int)image_buf_vector.size(); i++)
-                        image_buf_vector[i].pop();
-   
+                        if (!image_buf_vector[i].empty())
+                            image_buf_vector[i].pop();
+
                 for(int i = 0; i < NUM_OF_CAM; i++)
                 {
-                    image_msg_list.push_back(image_buf_vector[i].front());
-                    image_buf_vector[i].pop();
+                    if (image_buf_vector[i].empty())
+                    {
+                        cams_ok = false;
+                        break;
+                    }
                 }
-
-                while (point_buf.front()->header.stamp.toSec() < pose_msg->header.stamp.toSec())
+                if (cams_ok)
                 {
-                    point_buf.pop();
+                    for(int i = 0; i < NUM_OF_CAM; i++)
+                    {
+                        image_msg_list.push_back(image_buf_vector[i].front());
+                        image_buf_vector[i].pop();
+                    }
+
+                    while (!point_buf.empty() &&
+                           point_buf.front()->header.stamp.toSec() < pose_msg->header.stamp.toSec())
+                    {
+                        point_buf.pop();
+                    }
                 }
-
-                
-
-                point_msg = point_buf.front();
-                point_buf.pop();
-                cout.setf(ios::fixed);
-
+                if (cams_ok && !point_buf.empty())
+                {
+                    point_msg = point_buf.front();
+                    point_buf.pop();
+                    cout.setf(ios::fixed);
+                }
+                else
+                {
+                    ROS_WARN("pose_graph: camera/point buffers out of sync, skipping keyframe");
+                    image_msg_list.clear();
+                    pose_msg = NULL;
+                }
             }
         }
         m_buf.unlock();
