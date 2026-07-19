@@ -2699,34 +2699,54 @@ void MCVOEstimator::optimization()
         ROS_DEBUG("pre marginalization %f ms", t_pre_margin.toc());
 
         TicToc t_margin;
-        if (v_count != 0)
+        // marginalize() must run whenever any factor (including the previous
+        // prior) was added. Skipping it leaves m/n and the block indices
+        // unset, and getParameterBlocks() would then insert nullptr entries
+        // via the addr_shift map miss, crashing Ceres on the next pass with
+        // "Null pointer passed to AddParameterBlock". This used to happen
+        // when tracking collapsed and no landmark was hosted in the oldest
+        // frame (v_count == 0).
+        if (!marginalization_info->factors.empty())
             marginalization_info->marginalize();
         ROS_DEBUG("marginalization %f ms", t_margin.toc()); 
 
-        std::unordered_map<long, double *> addr_shift;
-        for (int i = 1; i <= WINDOW_SIZE; i++)
+        if (!marginalization_info->factors.empty() && marginalization_info->n > 0)
         {
-            addr_shift[reinterpret_cast<long>(para_Pose[i])] = para_Pose[i - 1];
-            addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i - 1];
-        }
-        for (int i = 0; i < NUM_OF_CAM; i++)
-        {
+            std::unordered_map<long, double *> addr_shift;
+            for (int i = 1; i <= WINDOW_SIZE; i++)
+            {
+                addr_shift[reinterpret_cast<long>(para_Pose[i])] = para_Pose[i - 1];
+                addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i - 1];
+            }
+            for (int i = 0; i < NUM_OF_CAM; i++)
+            {
 #if SINGLE_CAM_DEBUG
-            if (i != base_camera)
-                continue;
+                if (i != base_camera)
+                    continue;
 #endif
-            addr_shift[reinterpret_cast<long>(para_Ex_Pose[i])] = para_Ex_Pose[i];
-        }
-        if (ESTIMATE_TD)
-        {
-            addr_shift[reinterpret_cast<long>(para_Td[0])] = para_Td[0];
-        }
-        vector<double *> parameter_blocks = marginalization_info->getParameterBlocks(addr_shift);
+                addr_shift[reinterpret_cast<long>(para_Ex_Pose[i])] = para_Ex_Pose[i];
+            }
+            if (ESTIMATE_TD)
+            {
+                addr_shift[reinterpret_cast<long>(para_Td[0])] = para_Td[0];
+            }
+            vector<double *> parameter_blocks = marginalization_info->getParameterBlocks(addr_shift);
 
-        if (last_marginalization_info)
-            delete last_marginalization_info;
-        last_marginalization_info = marginalization_info;
-        last_marginalization_parameter_blocks = parameter_blocks;
+            if (last_marginalization_info)
+                delete last_marginalization_info;
+            last_marginalization_info = marginalization_info;
+            last_marginalization_parameter_blocks = parameter_blocks;
+        }
+        else
+        {
+            LOG(WARNING) << "Nothing to marginalize in oldest frame (v_count = "
+                         << v_count << "); dropping marginalization prior";
+            delete marginalization_info;
+            if (last_marginalization_info)
+                delete last_marginalization_info;
+            last_marginalization_info = nullptr;
+            last_marginalization_parameter_blocks.clear();
+        }
     }
     else
     {   
